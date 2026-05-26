@@ -1,0 +1,29 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors / IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs / temp
+*.log
+*.tmp
+.cache/
+
+# Local secrets — never commit
+.env
+.env.*
+secrets.json
+*.key
+*.pem
+
+# Build / preview artifacts (no build today, but leave the door closed)
+dist/
+build/
+node_modules/
+.parcel-cache/

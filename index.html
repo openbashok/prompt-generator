@@ -1,0 +1,3714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenBash · Prompt Generator</title>
+<meta name="description" content="Structured generator for prompts, CLAUDE.md project files, and SKILL.md agent skills. Hard rules, faders, optional AI backend. From pentesters, to pentesters. By OpenBash.">
+<meta name="author" content="OpenBash">
+<meta name="theme-color" content="#050510">
+<meta property="og:title" content="OpenBash · Prompt Generator">
+<meta property="og:description" content="Structured generator for prompts, CLAUDE.md, and SKILL.md. From pentesters, to pentesters.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://openbashok.github.io/prompt-generator/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="OpenBash · Prompt Generator">
+<meta name="twitter:description" content="Structured generator for prompts, CLAUDE.md, and SKILL.md. From pentesters, to pentesters.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23050510'/%3E%3Cpath d='M50 5 L92 28 L92 72 L50 95 L8 72 L8 28 Z M50 14 L16 33 L16 67 L50 86 L84 67 L84 33 Z' fill='%23ff2a78' fill-rule='evenodd'/%3E%3Cpath d='M28 50 L40 72 L60 72 L72 50 L60 28' stroke='%2300e5ff' stroke-width='6' fill='none' stroke-linejoin='miter'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    /* base dark */
+    --bg-deep:    #050510;
+    --bg:         #0a0a18;
+    --bg-panel:   #11111e;
+    --bg-panel-2: #161628;
+    --bg-input:   #0d0d1c;
+    --bg-elevate: #1d1d33;
+
+    /* borders */
+    --border:     #2a2a46;
+    --border-2:   #3a3a5e;
+    --border-hot: #4a4a78;
+
+    /* text */
+    --fg:         #e6e6ff;
+    --fg-dim:     #9a9ac0;
+    --fg-mute:    #5a5a78;
+
+    /* accents */
+    --pink:       #ff2a78;
+    --pink-glow:  rgba(255, 42, 120, 0.5);
+    --pink-soft:  rgba(255, 42, 120, 0.12);
+    --cyan:       #00e5ff;
+    --cyan-glow:  rgba(0, 229, 255, 0.5);
+    --cyan-soft:  rgba(0, 229, 255, 0.1);
+    --green:      #00ff9d;
+    --green-glow: rgba(0, 255, 157, 0.5);
+    --purple:     #a855f7;
+    --amber:      #fbbf24;
+
+    /* legacy semantic mappings */
+    --accent:     var(--pink);
+    --ok:         var(--green);
+    --warn:       var(--amber);
+    --err:        var(--pink);
+
+    --mono:    'JetBrains Mono', 'Menlo', 'Consolas', monospace;
+    --display: 'Orbitron', 'Inter', monospace;
+    --body:    'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  html, body {
+    background: var(--bg-deep);
+    color: var(--fg);
+    font-family: var(--body);
+    font-size: 13px;
+    line-height: 1.5;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ===== BACKGROUND LAYERS ===== */
+  /* grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255, 42, 120, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 229, 255, 0.03) 1px, transparent 1px);
+    background-size: 56px 56px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  /* radial glows */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 800px 600px at 15% 10%, rgba(255, 42, 120, 0.10), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 90% 90%, rgba(0, 229, 255, 0.08), transparent 60%),
+      radial-gradient(ellipse 600px 400px at 50% 50%, rgba(168, 85, 247, 0.05), transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  /* subtle scanlines */
+  .scanlines {
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 2px,
+      rgba(255, 255, 255, 0.012) 2px,
+      rgba(255, 255, 255, 0.012) 3px
+    );
+    pointer-events: none;
+    z-index: 1;
+    mix-blend-mode: overlay;
+  }
+
+  .app {
+    position: relative;
+    z-index: 5;
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 24px 24px 60px;
+  }
+
+  /* ===== HEADER ===== */
+  .top-card {
+    position: relative;
+    background: linear-gradient(135deg, rgba(17, 17, 30, 0.85), rgba(22, 22, 40, 0.85));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    margin-bottom: 22px;
+    overflow: hidden;
+    box-shadow:
+      0 0 0 1px rgba(255, 42, 120, 0.15),
+      0 20px 60px -10px rgba(0, 0, 0, 0.6),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    animation: cardIn .5s ease both;
+  }
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(-12px); }
+    to   { opacity: 1; transform: none; }
+  }
+  /* glow line at top */
+  .top-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--pink) 30%, var(--cyan) 70%, transparent);
+    opacity: 0.7;
+    z-index: 2;
+  }
+
+  .header {
+    position: relative;
+    padding: 22px 26px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .hex-badge {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, rgba(255, 42, 120, 0.15), rgba(0, 229, 255, 0.08));
+    border: 1px solid var(--border-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    flex-shrink: 0;
+    box-shadow:
+      inset 0 0 20px rgba(255, 42, 120, 0.15),
+      0 0 30px -8px var(--pink-glow);
+  }
+  .hex-badge::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border: 1px solid var(--pink);
+    opacity: 0.4;
+    pointer-events: none;
+  }
+  .hex-badge svg { width: 36px; height: 36px; position: relative; z-index: 2; }
+  .hex-badge svg path { fill: var(--pink); }
+  .hex-badge svg path[stroke] { stroke: var(--cyan); fill: none; }
+
+  .brand-name {
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: 1.6rem;
+    color: var(--fg);
+    letter-spacing: .06em;
+    line-height: 1;
+    text-shadow: 0 0 20px rgba(255, 42, 120, 0.3);
+  }
+  .brand-name .dot { color: var(--pink); text-shadow: 0 0 12px var(--pink-glow); }
+  .brand-product {
+    font-family: var(--display);
+    font-size: .58rem;
+    letter-spacing: .28em;
+    color: var(--cyan);
+    margin-top: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+  }
+  .brand-product::before {
+    content: '';
+    width: 16px;
+    height: 1px;
+    background: var(--cyan);
+    box-shadow: 0 0 8px var(--cyan);
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .header-meta {
+    font-family: var(--display);
+    font-size: .55rem;
+    letter-spacing: .2em;
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    color: var(--fg-dim);
+  }
+  .header-meta .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: flex-end;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .header-meta b { color: var(--fg); font-weight: 900; }
+  .header-meta .pink { color: var(--pink); text-shadow: 0 0 8px var(--pink-glow); }
+  .header-meta .cyan { color: var(--cyan); text-shadow: 0 0 8px var(--cyan-glow); }
+  .status-led {
+    display: inline-block;
+    width: 8px; height: 8px;
+    background: var(--fg-mute);
+    border-radius: 50%;
+  }
+  .status-led.active {
+    background: var(--green);
+    box-shadow: 0 0 0 0 var(--green-glow), 0 0 12px var(--green);
+    animation: ledPulse 1.8s ease-in-out infinite;
+  }
+  @keyframes ledPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(0, 255, 157, 0.7), 0 0 12px var(--green); }
+    50%      { box-shadow: 0 0 0 6px rgba(0, 255, 157, 0), 0 0 16px var(--green); }
+  }
+
+  /* sub-header */
+  .sub-header {
+    background: rgba(5, 5, 16, 0.6);
+    padding: 10px 26px;
+    font-family: var(--display);
+    font-size: .58rem;
+    letter-spacing: .25em;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-transform: uppercase;
+    color: var(--fg-dim);
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .sub-header .v { color: var(--pink); font-weight: 900; text-shadow: 0 0 8px var(--pink-glow); }
+  .sub-header .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+  /* mode-toggle AI */
+  .mode-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    border: 1px solid var(--border-2);
+    color: var(--fg-dim);
+    padding: 4px 11px;
+    cursor: pointer;
+    font-family: var(--display);
+    font-size: .55rem;
+    letter-spacing: .2em;
+    font-weight: 700;
+    text-transform: uppercase;
+    transition: all .15s;
+  }
+  .mode-toggle:hover { border-color: var(--cyan); color: var(--cyan); }
+  .mode-toggle .led {
+    width: 6px; height: 6px;
+    background: var(--fg-mute);
+    border-radius: 50%;
+  }
+  .mode-toggle.on {
+    border-color: var(--green);
+    color: var(--green);
+    box-shadow: 0 0 12px rgba(0, 255, 157, 0.3), inset 0 0 12px rgba(0, 255, 157, 0.1);
+  }
+  .mode-toggle.on .led {
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+  }
+
+  /* lang switch */
+  .lang-switch {
+    display: inline-flex;
+    border: 1px solid var(--border-2);
+    background: rgba(13, 13, 28, 0.6);
+  }
+  .lang-switch button {
+    background: transparent;
+    border: none;
+    color: var(--fg-dim);
+    padding: 4px 11px;
+    font-family: var(--display);
+    font-size: .55rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: .15em;
+    transition: all .15s;
+  }
+  .lang-switch button.active {
+    background: var(--pink);
+    color: var(--bg-deep);
+    box-shadow: 0 0 12px var(--pink-glow), inset 0 0 8px rgba(255, 255, 255, 0.2);
+  }
+  .lang-switch button:not(.active):hover { color: var(--fg); background: rgba(255, 255, 255, 0.04); }
+
+  /* ===== MODE SWITCHER ===== */
+  .mode-switcher {
+    display: flex;
+    background: linear-gradient(135deg, rgba(17, 17, 30, 0.7), rgba(22, 22, 40, 0.7));
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    margin-bottom: 22px;
+    overflow: hidden;
+    position: relative;
+  }
+  .mode-tab {
+    flex: 1;
+    padding: 14px 18px 14px 22px;
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--border);
+    color: var(--fg-dim);
+    font-family: var(--body);
+    text-align: left;
+    cursor: pointer;
+    position: relative;
+    transition: all .2s;
+  }
+  .mode-tab:last-child { border-right: none; }
+  .mode-tab .mode-num {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    font-family: var(--display);
+    font-size: .55rem;
+    letter-spacing: .15em;
+    color: var(--fg-mute);
+    font-weight: 900;
+  }
+  .mode-tab .mode-name {
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: .9rem;
+    letter-spacing: .12em;
+    display: block;
+    margin-bottom: 6px;
+    color: var(--fg);
+  }
+  .mode-tab .mode-desc {
+    font-family: var(--body);
+    font-size: .72rem;
+    line-height: 1.45;
+    color: var(--fg-mute);
+  }
+  .mode-tab:hover {
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .mode-tab:hover .mode-name { color: var(--cyan); }
+  .mode-tab.active {
+    background: linear-gradient(180deg, rgba(255, 42, 120, 0.08), transparent);
+  }
+  .mode-tab.active .mode-name {
+    color: var(--pink);
+    text-shadow: 0 0 12px var(--pink-glow);
+  }
+  .mode-tab.active .mode-desc { color: var(--fg-dim); }
+  .mode-tab.active .mode-num { color: var(--pink); }
+  .mode-tab.active::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--pink);
+    box-shadow: 0 0 12px var(--pink-glow);
+  }
+  .mode-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, var(--pink), transparent);
+    box-shadow: 0 0 8px var(--pink-glow);
+  }
+
+  /* ===== OFFLINE BANNER ===== */
+  .offline-banner {
+    background: linear-gradient(135deg, rgba(0, 255, 157, 0.08), rgba(0, 229, 255, 0.05));
+    border: 1px solid rgba(0, 255, 157, 0.25);
+    color: var(--fg);
+    padding: 11px 16px;
+    font-family: var(--body);
+    font-size: .85rem;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: inset 0 0 30px rgba(0, 255, 157, 0.04), 0 0 20px rgba(0, 255, 157, 0.06);
+  }
+  .offline-banner .led {
+    width: 8px; height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    box-shadow: 0 0 0 0 rgba(0, 255, 157, 0.7), 0 0 10px var(--green);
+    animation: ledPulse 1.8s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+  .offline-banner b {
+    color: var(--green);
+    font-family: var(--display);
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-shadow: 0 0 8px var(--green-glow);
+  }
+  .offline-banner code {
+    font-family: var(--mono);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--cyan);
+    padding: 1px 6px;
+    font-size: .85em;
+    border: 1px solid rgba(0, 229, 255, 0.2);
+  }
+
+  /* ===== LAYOUT GRID ===== */
+  .grid {
+    display: grid;
+    grid-template-columns: 320px 1fr 380px;
+    gap: 18px;
+    transition: grid-template-columns .2s;
+  }
+  .grid.ai-off { grid-template-columns: 320px 1fr; }
+  @media (max-width: 1280px) {
+    .grid, .grid.ai-off { grid-template-columns: 280px 1fr; }
+    .col-right { grid-column: 1 / -1; }
+  }
+  @media (max-width: 900px) {
+    .grid, .grid.ai-off { grid-template-columns: 1fr; }
+    .mode-switcher { flex-direction: column; }
+    .mode-tab { border-right: none; border-bottom: 1px solid var(--border); }
+    .mode-tab:last-child { border-bottom: none; }
+  }
+
+  /* ===== PANELS ===== */
+  .panel {
+    background: linear-gradient(180deg, rgba(17, 17, 30, 0.7), rgba(22, 22, 40, 0.5));
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    margin-bottom: 18px;
+    box-shadow:
+      0 8px 28px -8px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    position: relative;
+  }
+  .panel-head {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--display);
+    font-size: .6rem;
+    letter-spacing: .22em;
+    color: var(--fg-dim);
+    text-transform: uppercase;
+    font-weight: 700;
+    background: rgba(5, 5, 16, 0.4);
+    position: relative;
+  }
+  .panel-head::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 2px;
+    background: var(--pink);
+    box-shadow: 0 0 8px var(--pink-glow);
+  }
+  .panel-head .label-num {
+    color: var(--pink);
+    font-weight: 900;
+    margin-right: 8px;
+    padding-left: 6px;
+    text-shadow: 0 0 6px var(--pink-glow);
+  }
+  .panel-head .corner-tag {
+    font-family: var(--display);
+    font-size: .5rem;
+    letter-spacing: .18em;
+    color: var(--cyan);
+    text-transform: uppercase;
+    font-weight: 700;
+    background: rgba(0, 229, 255, 0.06);
+    border: 1px solid rgba(0, 229, 255, 0.2);
+    padding: 2px 7px;
+  }
+  .panel-body { padding: 14px; }
+
+  /* ===== FORM ELEMENTS ===== */
+  label.field { display: block; margin-bottom: 14px; }
+  label.field .lbl {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    font-family: var(--display);
+    font-size: .55rem;
+    color: var(--fg-dim);
+    text-transform: uppercase;
+    letter-spacing: .18em;
+    margin-bottom: 6px;
+    font-weight: 700;
+  }
+  label.field .lbl .hint {
+    color: var(--fg-mute);
+    text-transform: none;
+    letter-spacing: 0;
+    font-family: var(--body);
+    font-size: .72rem;
+    font-weight: 400;
+  }
+
+  input[type=text], input[type=password], select, textarea {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border-2);
+    border-left: 3px solid var(--pink);
+    color: var(--fg);
+    font-family: var(--body);
+    font-size: .92rem;
+    padding: 9px 11px;
+    outline: none;
+    transition: all .15s;
+    border-radius: 2px;
+    appearance: none;
+  }
+  textarea {
+    font-family: var(--mono);
+    font-size: .82rem;
+    resize: vertical;
+    min-height: 80px;
+    line-height: 1.6;
+  }
+  textarea.short { min-height: 44px; }
+  input::placeholder, textarea::placeholder {
+    color: var(--fg-mute);
+    font-weight: 300;
+  }
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--border-hot);
+    border-left-color: var(--cyan);
+    background: var(--bg-panel);
+    box-shadow:
+      0 0 0 3px rgba(0, 229, 255, 0.08),
+      0 0 20px rgba(0, 229, 255, 0.1);
+  }
+  select {
+    cursor: pointer;
+    background-color: var(--bg-input);
+    background-image:
+      linear-gradient(45deg, transparent 50%, var(--pink) 50%),
+      linear-gradient(135deg, var(--pink) 50%, transparent 50%);
+    background-position: calc(100% - 14px) 16px, calc(100% - 9px) 16px;
+    background-size: 5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 26px;
+  }
+  select option {
+    background: var(--bg-panel);
+    color: var(--fg);
+  }
+
+  /* ===== SLIDERS ===== */
+  .slider-block { margin-bottom: 18px; }
+  .slider-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--display);
+    font-size: .55rem;
+    text-transform: uppercase;
+    letter-spacing: .18em;
+    color: var(--fg-dim);
+    margin-bottom: 6px;
+    font-weight: 700;
+  }
+  .slider-row .name { color: var(--fg); font-weight: 700; }
+  .slider-row .value {
+    font-family: var(--display);
+    background: rgba(255, 42, 120, 0.1);
+    border: 1px solid rgba(255, 42, 120, 0.3);
+    color: var(--pink);
+    padding: 3px 11px;
+    min-width: 64px;
+    text-align: center;
+    letter-spacing: .08em;
+    font-weight: 900;
+    font-size: .65rem;
+    text-shadow: 0 0 8px var(--pink-glow);
+  }
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 22px;
+    background: transparent;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 4px;
+    background: linear-gradient(90deg, var(--pink), var(--cyan));
+    border-radius: 2px;
+    box-shadow: 0 0 8px rgba(255, 42, 120, 0.3);
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 18px;
+    background: var(--fg);
+    border: 1px solid var(--pink);
+    margin-top: -8px;
+    border-radius: 1px;
+    box-shadow: 0 0 12px var(--pink-glow), inset 0 0 4px rgba(255, 255, 255, 0.3);
+  }
+  input[type=range]::-moz-range-track {
+    height: 4px;
+    background: linear-gradient(90deg, var(--pink), var(--cyan));
+    border-radius: 2px;
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 14px;
+    height: 18px;
+    background: var(--fg);
+    border: 1px solid var(--pink);
+    border-radius: 1px;
+  }
+  .slider-scale {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--display);
+    font-size: .5rem;
+    color: var(--fg-mute);
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    font-weight: 700;
+  }
+
+  /* ===== CHIPS ===== */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .chip {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-2);
+    color: var(--fg-dim);
+    padding: 5px 11px;
+    font-family: var(--mono);
+    font-size: .72rem;
+    cursor: pointer;
+    user-select: none;
+    transition: all .15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+    border-radius: 2px;
+  }
+  .chip:hover {
+    border-color: var(--cyan);
+    color: var(--fg);
+    background: rgba(0, 229, 255, 0.04);
+  }
+  .chip.active {
+    background: rgba(255, 42, 120, 0.12);
+    border-color: var(--pink);
+    color: var(--pink);
+    box-shadow: 0 0 12px rgba(255, 42, 120, 0.2), inset 0 0 8px rgba(255, 42, 120, 0.08);
+    text-shadow: 0 0 6px var(--pink-glow);
+  }
+  .chip.active::before {
+    content: '×';
+    font-size: 14px;
+    line-height: 1;
+    color: var(--pink);
+    font-weight: 900;
+  }
+  .chip:not(.active)::before {
+    content: '+';
+    font-size: 14px;
+    line-height: 1;
+    color: var(--fg-mute);
+    font-weight: 900;
+  }
+  .chip.custom { border-style: dashed; }
+  .chip.custom .x {
+    color: var(--pink);
+    margin-left: 4px;
+    padding-left: 6px;
+    border-left: 1px solid rgba(255, 42, 120, 0.3);
+    font-weight: 900;
+  }
+  .chip.custom:hover .x { color: var(--fg); }
+
+  /* ===== STRUCT TOGGLES ===== */
+  .struct-list { display: flex; flex-direction: column; gap: 6px; }
+  .struct-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 11px;
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border-2);
+    font-family: var(--body);
+    cursor: pointer;
+    transition: all .15s;
+    border-radius: 2px;
+  }
+  .struct-item:hover {
+    background: rgba(0, 229, 255, 0.03);
+    border-color: var(--border-hot);
+  }
+  .struct-item .left { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+  .struct-item .name {
+    color: var(--fg);
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: .68rem;
+    letter-spacing: .1em;
+  }
+  .struct-item .desc {
+    color: var(--fg-mute);
+    font-size: .7rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 220px;
+  }
+  .struct-item.required {
+    cursor: default;
+    border-left-color: var(--pink);
+    background: rgba(255, 42, 120, 0.05);
+  }
+  .struct-item.required .req-tag {
+    font-family: var(--display);
+    font-size: .5rem;
+    color: var(--pink);
+    letter-spacing: .15em;
+    padding: 2px 6px;
+    border: 1px solid var(--pink);
+    font-weight: 700;
+    text-transform: uppercase;
+    box-shadow: 0 0 8px rgba(255, 42, 120, 0.2);
+  }
+  .struct-item .toggle {
+    width: 30px;
+    height: 16px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-2);
+    position: relative;
+    flex-shrink: 0;
+    border-radius: 1px;
+  }
+  .struct-item .toggle::after {
+    content: '';
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: var(--fg-mute);
+    top: 3px;
+    left: 3px;
+    transition: all .2s;
+    border-radius: 1px;
+  }
+  .struct-item.on { border-left-color: var(--green); background: rgba(0, 255, 157, 0.04); }
+  .struct-item.on .toggle { border-color: var(--green); }
+  .struct-item.on .toggle::after {
+    background: var(--green);
+    left: 18px;
+    box-shadow: 0 0 8px var(--green);
+  }
+  .struct-item.required .toggle { display: none; }
+
+  /* ===== PRESETS ROW ===== */
+  .preset-row { display: flex; gap: 6px; margin-bottom: 12px; }
+  .preset-row select { flex: 1; }
+
+  /* ===== BUTTONS ===== */
+  button, .btn {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-2);
+    color: var(--fg);
+    padding: 8px 14px;
+    font-family: var(--display);
+    font-size: .6rem;
+    text-transform: uppercase;
+    letter-spacing: .2em;
+    cursor: pointer;
+    transition: all .15s;
+    font-weight: 700;
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+  }
+  button:hover, .btn:hover {
+    border-color: var(--cyan);
+    color: var(--cyan);
+    background: rgba(0, 229, 255, 0.06);
+    box-shadow: 0 0 16px rgba(0, 229, 255, 0.15), inset 0 0 12px rgba(0, 229, 255, 0.05);
+  }
+  button.primary {
+    background: linear-gradient(135deg, var(--pink), #ff6090);
+    border: 1px solid var(--pink);
+    color: #fff;
+    font-weight: 900;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    box-shadow:
+      0 0 20px rgba(255, 42, 120, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.25),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  }
+  button.primary::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 60%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left .6s;
+  }
+  button.primary:hover {
+    background: linear-gradient(135deg, #ff4288, var(--pink));
+    box-shadow:
+      0 0 28px rgba(255, 42, 120, 0.6),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    color: #fff;
+  }
+  button.primary:hover::after { left: 130%; }
+  button.ghost {
+    background: transparent;
+    border: 1px solid var(--border-2);
+    color: var(--fg-dim);
+    padding: 6px 12px;
+    font-size: .55rem;
+  }
+  button.ghost:hover {
+    border-color: var(--cyan);
+    color: var(--cyan);
+    background: rgba(0, 229, 255, 0.05);
+  }
+  button.danger:hover {
+    border-color: var(--pink);
+    color: var(--pink);
+    background: rgba(255, 42, 120, 0.05);
+    box-shadow: 0 0 12px rgba(255, 42, 120, 0.2);
+  }
+  button:disabled { opacity: .35; cursor: not-allowed; }
+  button:disabled:hover {
+    border-color: var(--border-2);
+    color: var(--fg-dim);
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ===== OUTPUT ===== */
+
+  /* destacar el panel de output: glow border pink */
+  .panel.panel-output {
+    border-color: rgba(255, 42, 120, 0.35);
+    box-shadow:
+      0 0 0 1px rgba(255, 42, 120, 0.1),
+      0 0 28px -10px var(--pink-glow),
+      0 8px 28px -8px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  }
+  .panel.panel-output .panel-head::before {
+    box-shadow: 0 0 12px var(--pink-glow), 0 0 24px var(--pink-glow);
+  }
+
+  /* live dot al lado del título */
+  .live-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    margin-left: 10px;
+    box-shadow: 0 0 8px var(--green);
+    animation: ledPulse 1.8s ease-in-out infinite;
+    vertical-align: middle;
+  }
+
+  /* big export action buttons */
+  .export-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    padding: 14px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(255, 42, 120, 0.04), transparent);
+  }
+  .big-action {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    background: rgba(13, 13, 28, 0.5);
+    border: 1px solid var(--border-2);
+    color: var(--fg);
+    cursor: pointer;
+    transition: all .18s;
+    font-family: var(--body);
+    text-align: left;
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .big-action + .big-action { margin-left: 10px; }
+  .big-action:hover {
+    border-color: var(--cyan);
+    background: rgba(0, 229, 255, 0.06);
+    box-shadow: 0 0 18px rgba(0, 229, 255, 0.2), inset 0 0 12px rgba(0, 229, 255, 0.04);
+    transform: translateY(-1px);
+  }
+  .big-action .big-action-icon {
+    font-size: 1.6rem;
+    line-height: 1;
+    color: var(--fg-dim);
+    flex-shrink: 0;
+    transition: color .15s;
+  }
+  .big-action:hover .big-action-icon { color: var(--cyan); }
+  .big-action .big-action-label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .big-action .big-action-title {
+    font-family: var(--display);
+    font-size: .85rem;
+    font-weight: 900;
+    letter-spacing: .16em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .big-action .big-action-sub {
+    font-family: var(--body);
+    font-size: .7rem;
+    color: var(--fg-mute);
+    line-height: 1;
+    letter-spacing: 0;
+    text-transform: lowercase;
+  }
+
+  /* primary variant: el botón estrella */
+  .big-action.primary {
+    background: linear-gradient(135deg, var(--pink), #ff6090);
+    border-color: var(--pink);
+    color: #fff;
+    box-shadow:
+      0 0 24px rgba(255, 42, 120, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.25),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  }
+  .big-action.primary .big-action-icon { color: #fff; }
+  .big-action.primary .big-action-sub { color: rgba(255, 255, 255, 0.7); }
+  .big-action.primary::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 60%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left .6s;
+  }
+  .big-action.primary:hover {
+    background: linear-gradient(135deg, #ff4288, var(--pink));
+    border-color: var(--pink);
+    color: #fff;
+    box-shadow:
+      0 0 32px rgba(255, 42, 120, 0.6),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+  }
+  .big-action.primary:hover .big-action-icon { color: #fff; }
+  .big-action.primary:hover::after { left: 130%; }
+  .big-action.primary:hover .big-action-sub { color: rgba(255, 255, 255, 0.85); }
+
+  /* responsive: stack en pantallas chicas */
+  @media (max-width: 600px) {
+    .export-actions { grid-template-columns: 1fr; gap: 8px; }
+    .big-action + .big-action { margin-left: 0; }
+  }
+
+  /* flash feedback on copy/download success */
+  .big-action.flash-ok {
+    animation: flashOk .8s ease;
+  }
+  @keyframes flashOk {
+    0%   { box-shadow: 0 0 0 0 var(--green-glow); }
+    20%  {
+      box-shadow: 0 0 30px var(--green-glow), inset 0 0 20px rgba(0, 255, 157, 0.3);
+      border-color: var(--green) !important;
+      background: rgba(0, 255, 157, 0.15) !important;
+    }
+    100% { box-shadow: 0 0 0 0 rgba(0, 255, 157, 0); }
+  }
+  .big-action.flash-err {
+    animation: flashErr .8s ease;
+  }
+  @keyframes flashErr {
+    0%   { transform: translateX(0); }
+    25%  { transform: translateX(-4px); }
+    50%  { transform: translateX(4px); }
+    75%  { transform: translateX(-2px); }
+    100% { transform: translateX(0); }
+  }
+
+  /* label arriba del output preview */
+  .output-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-family: var(--display);
+    font-size: .55rem;
+    letter-spacing: .22em;
+    color: var(--fg-mute);
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .output-label-sep {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--border-2), transparent);
+  }
+  .output-label-hint {
+    color: var(--fg-mute);
+    letter-spacing: .08em;
+    text-transform: none;
+    font-family: var(--body);
+    font-size: .7rem;
+    font-weight: 400;
+  }
+
+  .output-pre {
+    background: var(--bg-deep);
+    border: 1px solid var(--border-2);
+    border-left: 3px solid var(--pink);
+    padding: 16px;
+    font-family: var(--mono);
+    font-size: .82rem;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--fg);
+    min-height: 400px;
+    max-height: 70vh;
+    overflow-y: auto;
+    box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.4);
+    border-radius: 2px;
+  }
+  .output-pre .sect-head {
+    color: var(--pink);
+    font-weight: 700;
+    text-shadow: 0 0 8px var(--pink-glow);
+  }
+  .output-pre .rule-no { color: var(--cyan); font-weight: 500; }
+  .output-pre .yaml-key { color: var(--cyan); font-weight: 700; }
+  .output-pre .yaml-sep { color: var(--fg-mute); }
+
+  .output-stats {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+    font-family: var(--display);
+    font-size: .55rem;
+    color: var(--fg-mute);
+    text-transform: uppercase;
+    letter-spacing: .15em;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-weight: 700;
+  }
+  .output-stats span b {
+    color: var(--pink);
+    font-weight: 900;
+    text-shadow: 0 0 6px var(--pink-glow);
+  }
+
+  /* ===== VALIDATION ===== */
+  .validation {
+    margin-top: 10px;
+    padding: 10px 12px;
+    font-family: var(--body);
+    font-size: .8rem;
+    line-height: 1.55;
+    display: none;
+    border: 1px solid;
+    border-left-width: 3px;
+    border-radius: 2px;
+  }
+  .validation.show { display: block; }
+  .validation.ok {
+    background: rgba(0, 255, 157, 0.06);
+    border-color: var(--green);
+    color: var(--green);
+    box-shadow: 0 0 16px rgba(0, 255, 157, 0.1);
+  }
+  .validation.warn {
+    background: rgba(251, 191, 36, 0.06);
+    border-color: var(--amber);
+    color: var(--amber);
+  }
+  .validation.err {
+    background: rgba(255, 42, 120, 0.06);
+    border-color: var(--pink);
+    color: var(--pink);
+    box-shadow: 0 0 16px rgba(255, 42, 120, 0.1);
+  }
+  .validation .v-head {
+    font-family: var(--display);
+    text-transform: uppercase;
+    letter-spacing: .15em;
+    font-weight: 900;
+    font-size: .65rem;
+    margin-bottom: 5px;
+  }
+  .validation ul { padding-left: 18px; margin: 0; }
+  .validation li { margin-bottom: 3px; }
+
+  /* ===== API CONFIG / WARNING ===== */
+  .api-warning {
+    background: rgba(251, 191, 36, 0.06);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    border-left: 3px solid var(--amber);
+    color: var(--amber);
+    padding: 9px 11px;
+    font-family: var(--body);
+    font-size: .78rem;
+    line-height: 1.5;
+    margin-bottom: 14px;
+    border-radius: 2px;
+  }
+  .api-warning b {
+    color: var(--amber);
+    font-family: var(--display);
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-shadow: 0 0 6px rgba(251, 191, 36, 0.4);
+  }
+
+  /* ===== TOAST ===== */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: rgba(17, 17, 30, 0.95);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--pink);
+    border-left: 4px solid var(--pink);
+    color: var(--fg);
+    padding: 12px 18px;
+    font-family: var(--display);
+    font-size: .65rem;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    font-weight: 700;
+    box-shadow: 0 0 30px var(--pink-glow), 0 10px 40px rgba(0, 0, 0, 0.5);
+    z-index: 100;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all .25s;
+    pointer-events: none;
+    max-width: 360px;
+    border-radius: 2px;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.err  { border-color: var(--pink); border-left-color: var(--pink); }
+  .toast.ok   {
+    border-color: var(--green);
+    border-left-color: var(--green);
+    box-shadow: 0 0 30px var(--green-glow), 0 10px 40px rgba(0, 0, 0, 0.5);
+  }
+
+  /* ===== ADD CUSTOM ===== */
+  .add-custom { display: flex; gap: 6px; }
+  .add-custom input { flex: 1; font-size: .82rem; padding: 6px 10px; }
+  .add-custom button { padding: 6px 14px; font-size: .58rem; }
+
+  /* ===== FOOTER ===== */
+  footer {
+    background: linear-gradient(180deg, rgba(17, 17, 30, 0.7), rgba(22, 22, 40, 0.5));
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    margin-top: 26px;
+    padding: 11px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--display);
+    font-size: .55rem;
+    letter-spacing: .2em;
+    color: var(--fg-dim);
+    font-weight: 700;
+    flex-wrap: wrap;
+    gap: 12px;
+    text-transform: uppercase;
+    position: relative;
+  }
+  footer::before {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--pink) 50%, transparent);
+    opacity: 0.5;
+  }
+  footer .l, footer .r { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+  footer .footer-dot {
+    width: 7px; height: 7px;
+    background: var(--green);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--green);
+    animation: ledPulse 1.8s ease-in-out infinite;
+  }
+  footer a {
+    color: var(--cyan);
+    text-decoration: none;
+    font-weight: 900;
+    transition: all .15s;
+  }
+  footer a:hover {
+    color: var(--pink);
+    text-shadow: 0 0 8px var(--pink-glow);
+  }
+  footer .v {
+    color: var(--pink);
+    font-weight: 900;
+    text-shadow: 0 0 6px var(--pink-glow);
+  }
+
+  /* utility */
+  .mt-8 { margin-top: 8px; }
+  .mt-12 { margin-top: 12px; }
+  .mt-16 { margin-top: 16px; }
+  .hidden { display: none !important; }
+
+  .ai-spinner {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border: 2px solid var(--pink);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    margin-right: 6px;
+    vertical-align: middle;
+    box-shadow: 0 0 8px var(--pink-glow);
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--bg-deep); }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-2);
+    border: 2px solid var(--bg-deep);
+    border-radius: 5px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--pink);
+    box-shadow: 0 0 8px var(--pink-glow);
+  }
+
+  /* selection */
+  ::selection {
+    background: var(--pink);
+    color: #fff;
+  }
+</style>
+</head>
+<body>
+
+<div class="scanlines"></div>
+
+<div class="app">
+
+  <!-- ============ TOP CARD ============ -->
+  <div class="top-card">
+    <div class="header">
+      <div class="header-left">
+        <div class="hex-badge">
+          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M50 5 L92 28 L92 72 L50 95 L8 72 L8 28 Z M50 14 L16 33 L16 67 L50 86 L84 67 L84 33 Z" fill-rule="evenodd"/>
+            <path d="M48 22 L36 44 L42 44 L36 56 L52 56 L58 44 L52 44 L60 30 L72 30 L66 22 Z"/>
+            <path d="M28 50 L40 72 L60 72 L72 50 L60 28" stroke-width="6" stroke-linejoin="miter"/>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-name">openbash<span class="dot">.</span></div>
+          <div class="brand-product">PROMPT GENERATOR</div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="header-meta">
+          <div class="row"><span class="status-led" id="status-led"></span><b id="api-status">offline</b></div>
+          <div class="row">
+            <span><span data-i18n="hdr_tokens">tokens</span>: <b class="cyan" id="header-tokens">0</b></span>
+            <span><span data-i18n="hdr_rules">rules</span>: <b class="pink" id="header-rules">0</b></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-header">
+      <span>OB · STRUCTURED INSTRUCTION BUILDER</span>
+      <div class="controls">
+        <div class="mode-toggle" id="ai-mode-toggle">
+          <span class="led"></span>
+          <span data-i18n="hdr_ai_panel">AI panel</span>
+        </div>
+        <div class="lang-switch">
+          <button data-lang="en" class="active">EN</button>
+          <button data-lang="es">ES</button>
+        </div>
+        <span class="v">v0.5</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODE SWITCHER -->
+  <div class="mode-switcher" id="mode-switcher">
+    <button class="mode-tab active" data-mode="prompt">
+      <span class="mode-num">01</span>
+      <span class="mode-name">PROMPT</span>
+      <span class="mode-desc" data-i18n="mode_prompt_desc">One-shot instruction for a single task. Pasted into a conversation.</span>
+    </button>
+    <button class="mode-tab" data-mode="claudemd">
+      <span class="mode-num">02</span>
+      <span class="mode-name">CLAUDE.md</span>
+      <span class="mode-desc" data-i18n="mode_claudemd_desc">Project context file. Auto-loaded by Claude Code at the repo root.</span>
+    </button>
+    <button class="mode-tab" data-mode="skillmd">
+      <span class="mode-num">03</span>
+      <span class="mode-name">SKILL.md</span>
+      <span class="mode-desc" data-i18n="mode_skillmd_desc">Reusable agent capability. Loaded dynamically when triggers match.</span>
+    </button>
+  </div>
+
+  <!-- Offline banner -->
+  <div class="offline-banner hidden" id="offline-banner">
+    <span class="led"></span>
+    <span id="offline-banner-text"></span>
+  </div>
+
+  <div class="grid" id="main-grid">
+
+    <!-- LEFT COL -->
+    <div class="col-left">
+
+      <div class="panel">
+        <div class="panel-head">
+          <span><span class="label-num">01</span><span data-i18n="panel_presets">PRESETS</span></span>
+          <span class="corner-tag" id="preset-count"></span>
+        </div>
+        <div class="panel-body">
+          <div class="preset-row">
+            <select id="preset-select">
+              <option value="" data-i18n="preset_placeholder">— load preset —</option>
+              <optgroup label="Base" id="base-presets-group"></optgroup>
+              <optgroup label="My presets" id="custom-presets-group"></optgroup>
+            </select>
+            <button class="ghost" id="save-preset-btn" data-i18n="btn_save">save</button>
+          </div>
+          <div class="btn-row">
+            <button class="ghost" id="reset-btn" data-i18n="btn_reset">reset</button>
+            <button class="ghost danger" id="delete-preset-btn" data-i18n="btn_del_preset">del</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span><span class="label-num">02</span><span data-i18n="panel_params">PARAMETERS</span></span>
+          <span class="corner-tag" data-i18n="tag_faders">faders</span>
+        </div>
+        <div class="panel-body">
+
+          <div class="slider-block">
+            <div class="slider-row">
+              <span class="name" data-i18n="fader_creativity">CREATIVITY</span>
+              <span class="value" id="creativity-val">0.30</span>
+            </div>
+            <input type="range" id="creativity" min="0" max="1" step="0.05" value="0.3">
+            <div class="slider-scale">
+              <span data-i18n="fader_creativity_min">literal</span>
+              <span data-i18n="fader_creativity_mid">balanced</span>
+              <span data-i18n="fader_creativity_max">free</span>
+            </div>
+          </div>
+
+          <div class="slider-block">
+            <div class="slider-row">
+              <span class="name" data-i18n="fader_rigor">RIGOR</span>
+              <span class="value" id="rigor-val">0.80</span>
+            </div>
+            <input type="range" id="rigor" min="0" max="1" step="0.05" value="0.8">
+            <div class="slider-scale">
+              <span data-i18n="fader_rigor_min">flexible</span>
+              <span data-i18n="fader_rigor_mid">standard</span>
+              <span data-i18n="fader_rigor_max">strict</span>
+            </div>
+          </div>
+
+          <div class="slider-block">
+            <div class="slider-row">
+              <span class="name" data-i18n="fader_verbosity">VERBOSITY</span>
+              <span class="value" id="verbosity-val">medium</span>
+            </div>
+            <input type="range" id="verbosity" min="0" max="3" step="1" value="1">
+            <div class="slider-scale" id="verbosity-scale"></div>
+          </div>
+
+          <div class="slider-block">
+            <div class="slider-row">
+              <span class="name" data-i18n="fader_tone">TONE</span>
+              <span class="value" id="tone-val">technical</span>
+            </div>
+            <input type="range" id="tone" min="0" max="3" step="1" value="2">
+            <div class="slider-scale" id="tone-scale"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span><span class="label-num">03</span><span data-i18n="panel_structure">STRUCTURE</span></span>
+          <span class="corner-tag" data-i18n="tag_sections">sections</span>
+        </div>
+        <div class="panel-body">
+          <div class="struct-list" id="struct-list"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- MIDDLE COL -->
+    <div class="col-mid">
+
+      <div class="panel">
+        <div class="panel-head">
+          <span><span class="label-num">04</span><span data-i18n="panel_content">CONTENT</span></span>
+          <span class="corner-tag" id="content-mode-tag"></span>
+        </div>
+        <div class="panel-body" id="content-fields"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span><span class="label-num">05</span><span data-i18n="panel_no_rules">NO · RULES</span></span>
+          <span class="corner-tag" id="rules-count-tag">0 active</span>
+        </div>
+        <div class="panel-body">
+          <div class="chips" id="no-chips"></div>
+          <div class="add-custom">
+            <input type="text" id="custom-rule-input" placeholder="add custom NO rule… (enter)" data-i18n-attr="placeholder:input_custom_rule">
+            <button id="add-rule-btn" data-i18n="btn_add">add</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel panel-output">
+        <div class="panel-head">
+          <span>
+            <span class="label-num">06</span>
+            <span id="output-panel-title">GENERATED</span>
+            <span class="live-dot" id="live-dot" title="auto-generated as you edit"></span>
+          </span>
+          <span class="corner-tag" data-i18n="tag_live">live preview</span>
+        </div>
+
+        <!-- BIG EXPORT ACTIONS -->
+        <div class="export-actions">
+          <button class="big-action primary" id="copy-btn">
+            <span class="big-action-icon">⧉</span>
+            <span class="big-action-label">
+              <span class="big-action-title" data-i18n="cta_copy">COPY</span>
+              <span class="big-action-sub" data-i18n="cta_copy_sub">to clipboard</span>
+            </span>
+          </button>
+          <button class="big-action" id="download-btn">
+            <span class="big-action-icon">↓</span>
+            <span class="big-action-label">
+              <span class="big-action-title" data-i18n="cta_download">DOWNLOAD</span>
+              <span class="big-action-sub" id="download-ext-label">.txt</span>
+            </span>
+          </button>
+        </div>
+
+        <div class="panel-body">
+          <div class="output-label">
+            <span data-i18n="output_preview">PREVIEW</span>
+            <span class="output-label-sep"></span>
+            <span class="output-label-hint" data-i18n="output_preview_hint">auto-updates as you edit</span>
+          </div>
+          <pre class="output-pre" id="output"></pre>
+          <div class="validation" id="validation"></div>
+          <div class="output-stats">
+            <span><span data-i18n="stat_chars">chars</span>: <b id="stat-chars">0</b></span>
+            <span>~<span data-i18n="stat_tokens">tokens</span>: <b id="stat-tokens">0</b></span>
+            <span><span data-i18n="stat_sections">sections</span>: <b id="stat-sections">0</b></span>
+            <span><span data-i18n="stat_rules">rules</span>: <b id="stat-rules">0</b></span>
+            <span id="stat-extra"></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COL : AI -->
+    <div class="col-right" id="ai-column">
+
+      <div class="panel">
+        <div class="panel-head">
+          <span><span class="label-num">07</span><span data-i18n="panel_ai_backend">AI BACKEND</span></span>
+          <span class="corner-tag" data-i18n="tag_optional">optional</span>
+        </div>
+        <div class="panel-body">
+          <div class="api-warning">
+            <b data-i18n="warn_label">⚠ NOTICE:</b>
+            <span data-i18n="warn_text"> API keys are stored only in your browser's localStorage and sent directly to the provider.</span>
+          </div>
+
+          <label class="field">
+            <span class="lbl"><span data-i18n="lbl_provider">provider</span></span>
+            <select id="ai-provider">
+              <option value="anthropic">Anthropic (Claude)</option>
+              <option value="openai">OpenAI (GPT)</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="lbl"><span data-i18n="lbl_model">model</span></span>
+            <select id="ai-model"></select>
+          </label>
+
+          <label class="field">
+            <span class="lbl">
+              <span data-i18n="lbl_apikey">api key</span>
+              <span class="hint" id="key-status">—</span>
+            </span>
+            <input type="password" id="ai-key" placeholder="sk-... / sk-ant-...">
+          </label>
+
+          <div class="btn-row">
+            <button class="ghost" id="save-key-btn" data-i18n="btn_save_key">save key</button>
+            <button class="ghost danger" id="clear-key-btn" data-i18n="btn_clear">clear</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span><span class="label-num">08</span><span data-i18n="panel_ai_actions">AI ACTIONS</span></span>
+          <span class="corner-tag" data-i18n="tag_refine_test">refine / test</span>
+        </div>
+        <div class="panel-body">
+          <p style="font-family: var(--body); font-size: .78rem; color: var(--fg-mute); margin-bottom: 14px; line-height: 1.5;" data-i18n="ai_actions_help">
+            Actions use your current output + faders. NO rules are injected as hard meta-instructions.
+          </p>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button class="primary" id="ai-improve-btn" data-i18n="btn_ai_improve">↻ IMPROVE</button>
+            <button id="ai-test-btn" data-i18n="btn_ai_test">▷ TEST RUN</button>
+            <button class="ghost" id="ai-critique-btn" data-i18n="btn_ai_critique">⌕ CRITIQUE</button>
+          </div>
+
+          <div id="ai-output-wrap" class="mt-16 hidden">
+            <div style="font-family: var(--display); font-size: .58rem; color: var(--fg-dim); text-transform: uppercase; letter-spacing: .18em; margin-bottom: 6px; display: flex; justify-content: space-between; font-weight: 700;">
+              <span id="ai-output-label">response</span>
+              <span class="corner-tag" id="ai-output-meta"></span>
+            </div>
+            <pre class="output-pre" id="ai-output" style="min-height: 200px; max-height: 400px; font-size: .78rem;"></pre>
+            <div class="btn-row mt-8">
+              <button class="ghost" id="ai-apply-btn" data-i18n="btn_ai_apply">↰ apply</button>
+              <button class="ghost" id="ai-copy-btn" data-i18n="btn_copy">copy</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <footer>
+    <div class="l">
+      <span class="footer-dot"></span>
+      <span>SYS://OB/PROMPT-GENERATOR</span>
+      <span><span data-i18n="footer_made_by">made by</span> <a href="https://openbash.com" target="_blank" rel="noopener">OpenBash</a></span>
+    </div>
+    <div class="r">
+      <span data-i18n="footer_local">100% local · no telemetry</span>
+      <span><span data-i18n="footer_state">state</span>: localStorage</span>
+      <span class="v">v0.5</span>
+    </div>
+  </footer>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+'use strict';
+
+// ============================================================
+// SECTION DEFINITIONS PER MODE
+// ============================================================
+// Each section: id, name(EN), name(ES), desc, required, placeholder(EN), placeholder(ES)
+// "required" means it must always be on and visible (can't toggle off).
+// id "rules" is special: auto-filled from NO chips.
+// id starting with "_yaml_" is part of YAML frontmatter (skill mode only).
+
+const MODE_DEFS = {
+  prompt: {
+    sections: [
+      { id: 'role',        nameEN: 'ROLE',         nameES: 'ROL',          descEN: 'model identity / role',     descES: 'identidad / rol del modelo' },
+      { id: 'context',     nameEN: 'CONTEXT',      nameES: 'CONTEXTO',     descEN: 'relevant background',       descES: 'background relevante' },
+      { id: 'task',        nameEN: 'TASK',         nameES: 'TAREA',        descEN: 'what to do',                descES: 'qué tiene que hacer' },
+      { id: 'input',       nameEN: 'INPUT',        nameES: 'INPUT',        descEN: 'data / evidence',           descES: 'datos / evidencia' },
+      { id: 'constraints', nameEN: 'CONSTRAINTS',  nameES: 'RESTRICCIONES',descEN: 'specific restrictions',     descES: 'restricciones específicas' },
+      { id: 'format',      nameEN: 'OUTPUT FORMAT',nameES: 'FORMATO',      descEN: 'response shape',            descES: 'forma de la respuesta' },
+      { id: 'examples',    nameEN: 'EXAMPLES',     nameES: 'EJEMPLOS',     descEN: 'few-shot examples',         descES: 'ejemplos few-shot' },
+      { id: 'rules',       nameEN: 'HARD RULES',   nameES: 'REGLAS DURAS', descEN: 'auto-injected',             descES: 'inyectadas automáticamente', isRules: true },
+    ],
+    defaultOn: ['role','context','task','constraints','format','rules'],
+  },
+
+  claudemd: {
+    sections: [
+      { id: 'project',     nameEN: 'PROJECT',         nameES: 'PROYECTO',         descEN: 'what this repo is',          descES: 'qué es este repo' },
+      { id: 'stack',       nameEN: 'STACK',           nameES: 'STACK',            descEN: 'tech / versions',            descES: 'tecnologías / versiones' },
+      { id: 'structure',   nameEN: 'STRUCTURE',       nameES: 'ESTRUCTURA',       descEN: 'key files & folders',        descES: 'archivos y carpetas clave' },
+      { id: 'commands',    nameEN: 'COMMANDS',        nameES: 'COMANDOS',         descEN: 'test / build / dev',         descES: 'test / build / dev' },
+      { id: 'conventions', nameEN: 'CONVENTIONS',     nameES: 'CONVENCIONES',     descEN: 'style / patterns',           descES: 'estilo / patrones' },
+      { id: 'rules',       nameEN: 'RULES',           nameES: 'REGLAS',           descEN: 'auto-injected',              descES: 'inyectadas automáticamente', isRules: true },
+      { id: 'workflow',    nameEN: 'WORKFLOW',        nameES: 'WORKFLOW',         descEN: 'how to work on this',        descES: 'cómo trabajar en esto' },
+      { id: 'notes',       nameEN: 'NOTES',           nameES: 'NOTAS',            descEN: 'gotchas, history, context',  descES: 'detalles, historia, contexto' },
+    ],
+    defaultOn: ['project','stack','commands','conventions','rules'],
+  },
+
+  skillmd: {
+    sections: [
+      { id: '_yaml_name',        nameEN: 'name',         nameES: 'name',         descEN: 'kebab-case identifier',     descES: 'identificador kebab-case', required: true, isYaml: true, short: true },
+      { id: '_yaml_description', nameEN: 'description',  nameES: 'description',  descEN: 'when Claude should load this', descES: 'cuándo Claude debe cargarlo', required: true, isYaml: true },
+      { id: 'purpose',     nameEN: 'PURPOSE',         nameES: 'PROPÓSITO',        descEN: 'what this skill does',       descES: 'qué hace este skill' },
+      { id: 'triggers',    nameEN: 'TRIGGERS',        nameES: 'TRIGGERS',         descEN: 'TRIGGER when… / SKIP when…', descES: 'TRIGGER cuando… / SKIP cuando…' },
+      { id: 'inputs',      nameEN: 'INPUTS',          nameES: 'INPUTS',           descEN: 'what the skill expects',     descES: 'qué espera el skill' },
+      { id: 'workflow',    nameEN: 'WORKFLOW',        nameES: 'WORKFLOW',         descEN: 'numbered steps',             descES: 'pasos numerados' },
+      { id: 'rules',       nameEN: 'GUARDRAILS',      nameES: 'GUARDRAILS',       descEN: 'auto-injected',              descES: 'inyectadas automáticamente', isRules: true },
+      { id: 'examples',    nameEN: 'EXAMPLES',        nameES: 'EJEMPLOS',         descEN: 'concrete usage',             descES: 'uso concreto' },
+      { id: 'output',      nameEN: 'OUTPUT FORMAT',   nameES: 'FORMATO SALIDA',   descEN: 'shape of the result',        descES: 'forma del resultado' },
+    ],
+    defaultOn: ['_yaml_name','_yaml_description','purpose','triggers','workflow','rules','examples'],
+  },
+};
+
+// ============================================================
+// PRESETS PER MODE (separated)
+// ============================================================
+const PRESETS = {
+  prompt: {
+    en: {
+      'pentest-finding': {
+        label: 'Pentest finding (strict)',
+        values: {
+          role: 'You are a senior pentester with 20 years of offensive security experience, specialized in writing findings for penetration testing reports following Mandiant/PTES standards.',
+          context: 'Web application audit. I have confirmed evidence (requests/responses, described screenshots). I need to write the formal finding for the client.',
+          task: 'Write ONE finding section of the report. Include: technical title, description, severity (justified CVSS), impact, verbatim cited evidence, and reproduction steps.',
+          input: '<<< paste evidence: requests, responses, payloads, described screenshots >>>',
+          constraints: '- Max 350 words\n- Each claim must be backed by explicitly cited evidence\n- If data is missing, write [REVIEW] instead of inventing',
+          format: 'Markdown. Headers: ### Title / **Severity** / **Description** / **Impact** / **Evidence** / **Reproduction** (numbered).',
+        },
+        ruleIdx: [0, 1, 2, 3, 4],
+        customRules: ['include remediation in this section (it goes separately)', 'overstate severity'],
+        creativity: 0.1, rigor: 0.95, verbosity: 1, tone: 3,
+        structureOn: ['role','context','task','input','constraints','format','rules'],
+      },
+      'code-review': {
+        label: 'Code review',
+        values: {
+          role: 'You are a security-aware senior engineer doing code review. Focus on correctness, security and maintainability — in that order.',
+          context: 'I will paste a diff or file. I want actionable review, not academic theory.',
+          task: 'Analyze the code and return issues by category. For each: file:line, severity, what is wrong, suggested fix (snippet).',
+          input: '<<< paste diff or code >>>',
+          constraints: '- Only real issues (no style nitpicks unless they break repo conventions)\n- Severities: critical / high / medium / low\n- If everything is fine, say so in one line',
+          format: 'Markdown list. Each issue: header with severity, then location, problem, fix.',
+        },
+        ruleIdx: [0, 11, 3, 4],
+        customRules: ['suggest massive refactors that were not requested', 'comment on style if it does not affect correctness'],
+        creativity: 0.2, rigor: 0.9, verbosity: 1, tone: 2,
+        structureOn: ['role','context','task','input','constraints','format','rules'],
+      },
+      'explainer': {
+        label: 'Technical explainer',
+        values: {
+          role: 'You are a clear technical educator. You explain complex concepts without diluting them.',
+          context: '',
+          task: 'Explain [TOPIC] to a reader who already knows the area basics but not this specific concept.',
+          constraints: '- One metaphor max (if it helps)\n- Show before tell (concrete example → generalization)',
+          format: 'Flowing prose. No unnecessary bullets. Subheaders only if length justifies it.',
+        },
+        ruleIdx: [2, 3, 6],
+        customRules: ['start with "Let\'s see..." or similar fillers'],
+        creativity: 0.5, rigor: 0.6, verbosity: 2, tone: 2,
+        structureOn: ['role','task','constraints','format','rules'],
+      },
+      'extractor': {
+        label: 'Structured extractor (JSON)',
+        values: {
+          role: 'You are a structured information parser. Your output is always valid JSON and nothing else.',
+          context: '',
+          task: 'Extract the following fields from the input: [FIELD1], [FIELD2], [FIELD3]. If a field is absent, use null.',
+          input: '<<< paste source text >>>',
+          constraints: '- Output exclusively JSON, no markdown wrappers (no ```)\n- Strings in double quotes\n- null for missing (never "N/A" or "")',
+          format: '{\n  "field1": "...",\n  "field2": "...",\n  "field3": null\n}',
+        },
+        ruleIdx: [0, 1, 3, 4],
+        customRules: ['add fields not requested', 'text outside the JSON'],
+        creativity: 0.0, rigor: 1.0, verbosity: 0, tone: 2,
+        structureOn: ['role','task','input','constraints','format','rules'],
+      },
+    },
+    es: {
+      'pentest-finding': {
+        label: 'Pentest finding (estricto)',
+        values: {
+          role: 'Sos un pentester senior con 20 años de experiencia en offensive security, especialista en redacción de findings para reportes de penetration testing siguiendo estándares Mandiant/PTES.',
+          context: 'Auditoría de aplicación web. Tengo evidencia confirmada (requests/responses, screenshots descritos). Necesito redactar el finding formal para el cliente.',
+          task: 'Redactá la sección de UN finding del reporte. Incluí: título técnico, descripción, severidad (CVSS justificado), impacto, evidencia citada textual, y pasos de reproducción.',
+          input: '<<< pegar evidencia: requests, responses, payloads, screenshots descritos >>>',
+          constraints: '- Máx 350 palabras\n- Español rioplatense\n- Cada claim debe estar respaldado por evidencia explícita citada\n- Si falta dato, escribir [REVISAR] en vez de inventar',
+          format: 'Markdown. Headers: ### Título / **Severidad** / **Descripción** / **Impacto** / **Evidencia** / **Reproducción** (numerada).',
+        },
+        ruleIdx: [0, 1, 2, 3, 4],
+        customRules: ['incluir remediación en esta sección (va aparte)', 'exagerar severidad'],
+        creativity: 0.1, rigor: 0.95, verbosity: 1, tone: 3,
+        structureOn: ['role','context','task','input','constraints','format','rules'],
+      },
+      'code-review': {
+        label: 'Code review',
+        values: {
+          role: 'Sos un security-aware senior engineer haciendo code review. Foco en correctness, seguridad y mantenibilidad — en ese orden.',
+          context: 'Voy a pegar un diff o archivo. Quiero un review accionable, no academia.',
+          task: 'Analizá el código y devolvé issues por categoría. Para cada uno: archivo:línea, severidad, qué está mal, fix sugerido (snippet).',
+          input: '<<< pegar diff o código >>>',
+          constraints: '- Solo issues reales (no nitpicks de estilo salvo que rompan convenciones del repo)\n- Severidades: critical / high / medium / low\n- Si todo está bien, decirlo en una línea',
+          format: 'Lista markdown. Cada issue: header con severidad, luego ubicación, problema, fix.',
+        },
+        ruleIdx: [0, 11, 3, 4],
+        customRules: ['sugerir refactors masivos no pedidos', 'comentar sobre estilo si no afecta correctness'],
+        creativity: 0.2, rigor: 0.9, verbosity: 1, tone: 2,
+        structureOn: ['role','context','task','input','constraints','format','rules'],
+      },
+      'explainer': {
+        label: 'Explainer técnico',
+        values: {
+          role: 'Sos un educador técnico claro. Explicás conceptos complejos sin diluirlos.',
+          context: '',
+          task: 'Explicá [TEMA] a un lector que ya sabe lo básico del área pero no conoce este concepto específico.',
+          constraints: '- Una metáfora máximo (si ayuda)\n- Mostrar antes de contar (ejemplo concreto → generalización)',
+          format: 'Prosa fluida. Sin bullets innecesarios. Subheaders solo si la longitud lo justifica.',
+        },
+        ruleIdx: [2, 3, 6],
+        customRules: ['empezar con "Vamos a ver..." o similares'],
+        creativity: 0.5, rigor: 0.6, verbosity: 2, tone: 2,
+        structureOn: ['role','task','constraints','format','rules'],
+      },
+      'extractor': {
+        label: 'Extractor estructurado (JSON)',
+        values: {
+          role: 'Sos un parser de información estructurada. Tu output siempre es JSON válido y nada más.',
+          context: '',
+          task: 'Extraé los siguientes campos del input: [CAMPO1], [CAMPO2], [CAMPO3]. Si un campo no aparece, usar null.',
+          input: '<<< pegar texto fuente >>>',
+          constraints: '- Output exclusivamente JSON, sin markdown wrappers (sin ```)\n- Strings entre comillas dobles\n- null para faltantes (nunca "N/A" o "")',
+          format: '{\n  "campo1": "...",\n  "campo2": "...",\n  "campo3": null\n}',
+        },
+        ruleIdx: [0, 1, 3, 4],
+        customRules: ['agregar campos no pedidos', 'texto fuera del JSON'],
+        creativity: 0.0, rigor: 1.0, verbosity: 0, tone: 2,
+        structureOn: ['role','task','input','constraints','format','rules'],
+      },
+    },
+  },
+
+  claudemd: {
+    en: {
+      'pentest-engagement': {
+        label: 'Pentest engagement workspace',
+        values: {
+          project: 'This repo holds the artifacts for an active penetration testing engagement: scope docs, recon output, evidence files, and the final report. Treat all work here as bound to the signed Rules of Engagement.',
+          stack: 'Markdown reports, raw HTTP captures (.req/.res), screenshots (.png with described filenames), JSON output from automated scanners.',
+          structure: '- `scope/` — signed RoE, IP ranges, exclusions\n- `recon/` — passive and active recon output\n- `evidence/` — raw artifacts, indexed by finding ID\n- `findings/` — one .md per finding, draft and final\n- `report/` — assembled deliverable',
+          commands: '- New finding: `./scripts/new-finding.sh <slug>`\n- Render report: `make report`',
+          conventions: '- Every finding ID maps 1:1 to a folder in `evidence/`\n- Severity uses CVSS 3.1 vector strings, not just labels\n- Rioplatense Spanish for client-facing text, English for tooling',
+          workflow: '1. Confirm in-scope before any active testing\n2. Capture raw evidence first, write finding later\n3. Cross-link every claim in the finding to a file in `evidence/`\n4. Peer review before marking a finding as final',
+          notes: '- Client uses PCI-DSS terminology, not OWASP\n- Out-of-scope IPs are listed in `scope/exclusions.txt` — check before any scan',
+        },
+        ruleIdx: [0, 1, 4],
+        customRules: ['run any active test against IPs not listed in scope/in-scope.txt', 'commit raw client data with PII unredacted', 'modify evidence files after a finding is marked final'],
+        creativity: 0.15, rigor: 0.95, verbosity: 2, tone: 3,
+        structureOn: ['project','stack','structure','commands','conventions','rules','workflow','notes'],
+      },
+      'security-tool-repo': {
+        label: 'Security tool repository',
+        values: {
+          project: 'Python CLI security tool. Used by pentesters in live engagements, so reliability and predictable behavior matter more than features.',
+          stack: 'Python 3.11+, click for CLI, httpx for HTTP, pytest for tests, ruff for linting.',
+          structure: '- `src/<tool>/` — main package\n- `tests/` — pytest tests, mirrors src structure\n- `docs/` — user-facing docs',
+          commands: '- Test: `pytest -q`\n- Lint: `ruff check src tests`\n- Type check: `mypy src`\n- Run locally: `python -m <tool> --help`',
+          conventions: '- Type hints on every public function\n- No `print()`, use the logger\n- Errors via custom exceptions, never bare `except`\n- All HTTP through the centralized client (timeouts, retries, UA)',
+          workflow: '1. Open issue → branch off main → PR\n2. Every PR adds or updates a test\n3. No PR merges with lint/test failures',
+          notes: '- The tool runs in adversarial environments — never trust input, always validate\n- Performance matters in tight loops, but correctness matters more',
+        },
+        ruleIdx: [0, 10, 11],
+        customRules: ['commit secrets, API keys, or .env files', 'add dependencies without justification in the PR', 'introduce subprocess shell=True calls'],
+        creativity: 0.2, rigor: 0.9, verbosity: 2, tone: 2,
+        structureOn: ['project','stack','structure','commands','conventions','rules','workflow','notes'],
+      },
+      'report-writing': {
+        label: 'Report writing workspace',
+        values: {
+          project: 'Repository for client-deliverable pentest reports. Each report is a folder; final output is a PDF rendered from Markdown + assets.',
+          stack: 'Markdown + Pandoc + LaTeX template for PDF rendering. Diagrams in mermaid or SVG.',
+          structure: '- `<client>-<engagement>-<year>/` — one folder per report\n- `<...>/sections/` — modular .md files\n- `<...>/assets/` — images, diagrams\n- `<...>/build/` — rendered output (gitignored)',
+          commands: '- Render: `make pdf` (uses pandoc)\n- Spell check: `make spell`',
+          conventions: '- Mandiant-style report structure\n- Every finding cites evidence by filename, never by paraphrase\n- Severities use CVSS 3.1\n- No first person ("we found"); use neutral voice ("the assessment identified")',
+          workflow: '1. Draft findings as testing progresses\n2. Internal peer review before client delivery\n3. Track changes via git, not Word comments',
+          notes: '- Confidentiality footer must be present on every page\n- Client logo lives in `assets/branding/`',
+        },
+        ruleIdx: [0, 1, 2, 3, 4],
+        customRules: ['paraphrase evidence; quote it verbatim or describe the source file', 'use marketing language ("robust", "best-in-class", "next-gen")', 'include findings without a verified evidence trail'],
+        creativity: 0.1, rigor: 0.95, verbosity: 2, tone: 3,
+        structureOn: ['project','stack','structure','commands','conventions','rules','workflow','notes'],
+      },
+    },
+    es: {
+      'pentest-engagement': {
+        label: 'Workspace de pentest engagement',
+        values: {
+          project: 'Este repo contiene los artifacts de un engagement activo de penetration testing: docs de scope, output de recon, evidencia y reporte final. Todo trabajo acá está sujeto a las Rules of Engagement firmadas.',
+          stack: 'Reportes en Markdown, capturas HTTP raw (.req/.res), screenshots (.png con filenames descriptivos), JSON output de scanners automáticos.',
+          structure: '- `scope/` — RoE firmadas, rangos IP, exclusiones\n- `recon/` — output de recon pasivo y activo\n- `evidence/` — artifacts crudos, indexados por finding ID\n- `findings/` — un .md por finding, draft y final\n- `report/` — entregable ensamblado',
+          commands: '- Nuevo finding: `./scripts/new-finding.sh <slug>`\n- Renderizar reporte: `make report`',
+          conventions: '- Cada finding ID mapea 1:1 a una carpeta en `evidence/`\n- Severidad usa vector strings CVSS 3.1, no solo labels\n- Español rioplatense para texto cara al cliente, inglés para tooling',
+          workflow: '1. Confirmar in-scope antes de cualquier testing activo\n2. Capturar evidencia cruda primero, redactar finding después\n3. Cross-linkear cada claim del finding a un archivo en `evidence/`\n4. Peer review antes de marcar un finding como final',
+          notes: '- El cliente usa terminología PCI-DSS, no OWASP\n- IPs fuera de scope están en `scope/exclusions.txt` — chequear antes de cada scan',
+        },
+        ruleIdx: [0, 1, 4],
+        customRules: ['correr ningún test activo contra IPs no listadas en scope/in-scope.txt', 'commitear datos crudos del cliente con PII sin redactar', 'modificar archivos de evidencia después que un finding fue marcado final'],
+        creativity: 0.15, rigor: 0.95, verbosity: 2, tone: 3,
+        structureOn: ['project','stack','structure','commands','conventions','rules','workflow','notes'],
+      },
+      'security-tool-repo': {
+        label: 'Repo de herramienta de security',
+        values: {
+          project: 'Herramienta CLI de security en Python. La usan pentesters en engagements en vivo, así que la confiabilidad y el comportamiento predecible importan más que las features.',
+          stack: 'Python 3.11+, click para CLI, httpx para HTTP, pytest para tests, ruff para linting.',
+          structure: '- `src/<tool>/` — paquete principal\n- `tests/` — tests pytest, espeja la estructura de src\n- `docs/` — docs cara al usuario',
+          commands: '- Test: `pytest -q`\n- Lint: `ruff check src tests`\n- Type check: `mypy src`\n- Correr local: `python -m <tool> --help`',
+          conventions: '- Type hints en cada función pública\n- Nada de `print()`, usar el logger\n- Errores via custom exceptions, nunca `except` pelado\n- Todo HTTP por el cliente centralizado (timeouts, retries, UA)',
+          workflow: '1. Abrir issue → branch desde main → PR\n2. Cada PR agrega o actualiza un test\n3. No mergea PR con fallas de lint/test',
+          notes: '- La herramienta corre en entornos adversariales — nunca confiar en input, siempre validar\n- Performance importa en loops apretados, pero correctness importa más',
+        },
+        ruleIdx: [0, 10, 11],
+        customRules: ['commitear secrets, API keys o archivos .env', 'agregar dependencias sin justificación en el PR', 'introducir llamadas a subprocess con shell=True'],
+        creativity: 0.2, rigor: 0.9, verbosity: 2, tone: 2,
+        structureOn: ['project','stack','structure','commands','conventions','rules','workflow','notes'],
+      },
+      'report-writing': {
+        label: 'Workspace de redacción de reportes',
+        values: {
+          project: 'Repo para reportes de pentest entregables al cliente. Cada reporte es una carpeta; el output final es un PDF renderizado desde Markdown + assets.',
+          stack: 'Markdown + Pandoc + template LaTeX para renderizado PDF. Diagramas en mermaid o SVG.',
+          structure: '- `<cliente>-<engagement>-<año>/` — una carpeta por reporte\n- `<...>/sections/` — archivos .md modulares\n- `<...>/assets/` — imágenes, diagramas\n- `<...>/build/` — output renderizado (gitignored)',
+          commands: '- Renderizar: `make pdf` (usa pandoc)\n- Spell check: `make spell`',
+          conventions: '- Estructura de reporte estilo Mandiant\n- Cada finding cita evidencia por filename, nunca por paráfrasis\n- Severidades en CVSS 3.1\n- Sin primera persona ("encontramos"); usar voz neutra ("la evaluación identificó")',
+          workflow: '1. Draftear findings mientras el testing avanza\n2. Peer review interno antes del delivery al cliente\n3. Tracking de cambios via git, no comentarios de Word',
+          notes: '- Footer de confidencialidad presente en cada página\n- Logo del cliente vive en `assets/branding/`',
+        },
+        ruleIdx: [0, 1, 2, 3, 4],
+        customRules: ['parafrasear evidencia; citarla textual o describir el archivo fuente', 'usar lenguaje marketinero ("robusto", "best-in-class", "next-gen")', 'incluir findings sin trazabilidad verificada de evidencia'],
+        creativity: 0.1, rigor: 0.95, verbosity: 2, tone: 3,
+        structureOn: ['project','stack','structure','commands','conventions','rules','workflow','notes'],
+      },
+    },
+  },
+
+  skillmd: {
+    en: {
+      'pentest-finding-writer': {
+        label: 'Pentest finding writer',
+        values: {
+          _yaml_name: 'pentest-finding-writer',
+          _yaml_description: 'Use when the user asks to write a pentest finding, vulnerability finding, or any section of a penetration testing report (title, severity, description, impact, evidence, reproduction, remediation). Triggers on terms like "finding", "vulnerability writeup", "CVSS", "pentest report section". Skip for general security questions or threat modeling.',
+          purpose: 'Write a single, evidence-grounded pentest finding in Mandiant/PTES style, with strict separation between observation and inference.',
+          triggers: 'TRIGGER when:\n- user asks to write or improve a finding\n- user pastes raw evidence (HTTP req/res, code snippet, screenshot description) and asks for the finding\n- user requests a CVSS score with justification\n\nSKIP when:\n- the request is exploratory ("can you check if X is vulnerable?")\n- there is no concrete evidence to ground the finding',
+          inputs: '- Raw evidence (HTTP captures, code, logs, screenshot descriptions)\n- Optional: target CVSS vector, scope notes, severity hint\n- Optional: the client\'s preferred terminology (OWASP / PCI / NIST)',
+          workflow: '1. Read the evidence first; identify what is observed vs what is inferred\n2. Draft the technical title (concise, vulnerability-class oriented)\n3. Compute or accept the CVSS 3.1 vector; justify each metric\n4. Write the description: WHAT was observed, WHERE, under what conditions\n5. Write the impact: realistic worst case grounded in the evidence\n6. Cite evidence verbatim; never paraphrase the raw artifact\n7. Write reproduction as numbered steps a third party can follow\n8. If asked, write remediation as a separate section, not mixed in',
+          examples: 'Example trigger: "Write the finding for this: [HTTP request showing SQLi]"\nExample non-trigger: "What is SQL injection?" — answer normally, no finding format.',
+          output: 'Markdown with these headers in order:\n### <Technical title>\n**Severity:** <CVSS vector + label>\n**Description:** <observed behavior>\n**Impact:** <grounded worst case>\n**Evidence:** <verbatim citations>\n**Reproduction:**\n1. <step>\n2. <step>',
+        },
+        ruleIdx: [0, 1, 2, 3, 4],
+        customRules: ['mix remediation into the finding body', 'overstate severity', 'use vague verbs like "could potentially" without grounding'],
+        creativity: 0.1, rigor: 0.95, verbosity: 2, tone: 3,
+        structureOn: ['_yaml_name','_yaml_description','purpose','triggers','inputs','workflow','rules','examples','output'],
+      },
+      'severity-assessor': {
+        label: 'Severity assessor (CVSS)',
+        values: {
+          _yaml_name: 'severity-assessor',
+          _yaml_description: 'Use when the user needs to assign or justify a CVSS 3.1 severity vector to a vulnerability. Triggers on phrases like "what CVSS", "score this", "is this high or critical", "justify the severity". Skip if the user only wants a qualitative label without justification.',
+          purpose: 'Produce a justified CVSS 3.1 vector for a vulnerability, with each metric defended against the evidence.',
+          triggers: 'TRIGGER when:\n- user provides a vulnerability description and asks for severity\n- user has a CVSS vector and wants it reviewed\n- user disputes a severity\n\nSKIP when:\n- the user just wants a label ("high"/"low") with no justification\n- there is no vulnerability described',
+          inputs: '- Vulnerability description (or finding draft)\n- Optional: deployment context (internet-facing vs internal, auth required, etc.)',
+          workflow: '1. Identify the vulnerability class (use CWE if applicable)\n2. Go through each Base metric (AV, AC, PR, UI, S, C, I, A) and assign\n3. For each metric, write ONE sentence justifying the choice against the evidence\n4. Compute the score and label\n5. Note any Temporal/Environmental metrics if the user provided context for them\n6. Flag any metric where the evidence is insufficient to assign confidently',
+          examples: 'Trigger: "CVSS for stored XSS on the admin dashboard?"\nNon-trigger: "Is XSS bad?" — explain XSS, do not score.',
+          output: 'Markdown:\n**Vector:** CVSS:3.1/AV:.../AC:.../...\n**Score:** X.X (Severity Label)\n\n**Justification:**\n- AV: <reason>\n- AC: <reason>\n- (one bullet per metric assigned)\n\n**Insufficient evidence for:** <list any metric you could not assign with confidence>',
+        },
+        ruleIdx: [0, 1, 3],
+        customRules: ['assign metrics without justification', 'pick a label first and back-fit the metrics', 'guess when evidence is insufficient'],
+        creativity: 0.05, rigor: 1.0, verbosity: 1, tone: 3,
+        structureOn: ['_yaml_name','_yaml_description','purpose','triggers','inputs','workflow','rules','examples','output'],
+      },
+      'evidence-validator': {
+        label: 'Evidence validator',
+        values: {
+          _yaml_name: 'evidence-validator',
+          _yaml_description: 'Use to validate that a pentest finding, security writeup, or vulnerability report is fully grounded in cited evidence. Reviews the text claim-by-claim and flags any statement that is not traceable to a referenced artifact. Triggers on requests like "validate this finding", "check this report for inferences", "audit my writeup".',
+          purpose: 'Audit a finding or report and flag every claim that is not directly traceable to the cited evidence.',
+          triggers: 'TRIGGER when:\n- user pastes a finding/report and asks for review of evidence grounding\n- user asks to find unsupported claims\n- user wants a sanity check before client delivery\n\nSKIP when:\n- the user wants style review, not factual grounding\n- there is no evidence section to validate against',
+          inputs: '- Finding or report text\n- Evidence (cited or attached)',
+          workflow: '1. Read the entire finding\n2. Extract every factual claim (one per line)\n3. For each claim, check: is there a citation? Does the citation actually support this exact claim?\n4. Categorize each claim: [GROUNDED] / [WEAK CITATION] / [NO CITATION] / [INFERENCE]\n5. List all non-[GROUNDED] claims with the exact text and the problem\n6. Suggest the minimum edit to make each one grounded',
+          examples: 'Trigger: "Review this finding for unsupported claims: [text]"\nNon-trigger: "Is this writeup good?" — too vague, ask which aspect.',
+          output: 'Markdown:\n**Summary:** X grounded / Y weak / Z ungrounded / W inferences\n\n**Issues:**\n1. [SEVERITY] "<exact quote from finding>" — <what is wrong> — <suggested fix>\n2. ...',
+        },
+        ruleIdx: [0, 1, 3, 4],
+        customRules: ['accept inferences as grounded', 'paraphrase the original text when flagging', 'flag style issues in this skill (out of scope)'],
+        creativity: 0.05, rigor: 1.0, verbosity: 1, tone: 2,
+        structureOn: ['_yaml_name','_yaml_description','purpose','triggers','inputs','workflow','rules','examples','output'],
+      },
+      'owasp-categorizer': {
+        label: 'OWASP categorizer',
+        values: {
+          _yaml_name: 'owasp-categorizer',
+          _yaml_description: 'Use to categorize a vulnerability or finding into OWASP Top 10 (web) or OWASP Mobile Top 10 categories. Triggers on requests like "OWASP category for this", "which Top 10 is this", "classify this finding". Skip for non-vulnerability content or when the user already has a category they trust.',
+          purpose: 'Map a described vulnerability to the appropriate OWASP Top 10 (2021) or OWASP Mobile Top 10 (2024) category, with justification.',
+          triggers: 'TRIGGER when:\n- user describes a vulnerability and asks for OWASP category\n- user has a draft finding and wants OWASP tagging\n\nSKIP when:\n- the vulnerability is described too vaguely to map confidently\n- the user wants CWE instead (use a CWE skill)',
+          inputs: '- Vulnerability description or finding text\n- Optional: platform hint (web / mobile / API)',
+          workflow: '1. Identify the platform (web → Top 10 2021; mobile → Mobile Top 10 2024; API → API Top 10 2023)\n2. Match the vulnerability class to the closest category\n3. Justify the choice in one sentence citing the category definition\n4. If two categories overlap, name both and explain the primary choice\n5. If no category fits, say so explicitly — do not force a fit',
+          examples: 'Trigger: "OWASP category for stored XSS that requires admin auth?"\nNon-trigger: "What is OWASP?" — answer normally, no categorization.',
+          output: 'Markdown:\n**Platform:** Web | Mobile | API\n**Primary category:** AXX:YYYY — <name>\n**Secondary (if any):** AXX:YYYY — <name>\n**Justification:** <one sentence>',
+        },
+        ruleIdx: [0, 1, 3],
+        customRules: ['force a category when the fit is poor', 'cite OWASP categories without the year (definitions change)'],
+        creativity: 0.1, rigor: 0.9, verbosity: 0, tone: 2,
+        structureOn: ['_yaml_name','_yaml_description','purpose','triggers','inputs','workflow','rules','examples','output'],
+      },
+    },
+    es: {
+      'pentest-finding-writer': {
+        label: 'Redactor de findings pentest',
+        values: {
+          _yaml_name: 'pentest-finding-writer',
+          _yaml_description: 'Usar cuando el usuario pide redactar un finding pentest, un finding de vulnerabilidad, o cualquier sección de un reporte de penetration testing (título, severidad, descripción, impacto, evidencia, reproducción, remediación). Triggers en términos como "finding", "writeup de vulnerabilidad", "CVSS", "sección de reporte pentest". Skip para preguntas generales de seguridad o threat modeling.',
+          purpose: 'Redactar UN finding pentest groundeado en evidencia, estilo Mandiant/PTES, con separación estricta entre observación e inferencia.',
+          triggers: 'TRIGGER cuando:\n- el usuario pide redactar o mejorar un finding\n- el usuario pega evidencia cruda (HTTP req/res, snippet de código, descripción de screenshot) y pide el finding\n- el usuario pide un score CVSS con justificación\n\nSKIP cuando:\n- el pedido es exploratorio ("podés chequear si X es vulnerable?")\n- no hay evidencia concreta para groundear el finding',
+          inputs: '- Evidencia cruda (capturas HTTP, código, logs, descripciones de screenshots)\n- Opcional: vector CVSS target, notas de scope, hint de severidad\n- Opcional: terminología preferida del cliente (OWASP / PCI / NIST)',
+          workflow: '1. Leer la evidencia primero; identificar qué se observó vs qué se infiere\n2. Draftear el título técnico (conciso, orientado a clase de vulnerabilidad)\n3. Computar o aceptar el vector CVSS 3.1; justificar cada métrica\n4. Redactar la descripción: QUÉ se observó, DÓNDE, bajo qué condiciones\n5. Redactar el impacto: peor caso realista grounded en la evidencia\n6. Citar evidencia textual; nunca parafrasear el artifact crudo\n7. Redactar reproducción como pasos numerados que un tercero pueda seguir\n8. Si se pide, redactar remediación como sección aparte, no mezclada',
+          examples: 'Ejemplo trigger: "Redactá el finding para esto: [HTTP request mostrando SQLi]"\nEjemplo no-trigger: "Qué es SQL injection?" — responder normal, sin formato finding.',
+          output: 'Markdown con estos headers en orden:\n### <Título técnico>\n**Severidad:** <vector CVSS + label>\n**Descripción:** <comportamiento observado>\n**Impacto:** <peor caso grounded>\n**Evidencia:** <citas textuales>\n**Reproducción:**\n1. <paso>\n2. <paso>',
+        },
+        ruleIdx: [0, 1, 2, 3, 4],
+        customRules: ['mezclar remediación dentro del cuerpo del finding', 'exagerar severidad', 'usar verbos vagos como "podría potencialmente" sin grounding'],
+        creativity: 0.1, rigor: 0.95, verbosity: 2, tone: 3,
+        structureOn: ['_yaml_name','_yaml_description','purpose','triggers','inputs','workflow','rules','examples','output'],
+      },
+      'severity-assessor': {
+        label: 'Evaluador de severidad (CVSS)',
+        values: {
+          _yaml_name: 'severity-assessor',
+          _yaml_description: 'Usar cuando el usuario necesita asignar o justificar un vector CVSS 3.1 a una vulnerabilidad. Triggers en frases como "qué CVSS", "scoreá esto", "esto es high o critical", "justificá la severidad". Skip si el usuario solo quiere una label cualitativa sin justificación.',
+          purpose: 'Producir un vector CVSS 3.1 justificado para una vulnerabilidad, con cada métrica defendida contra la evidencia.',
+          triggers: 'TRIGGER cuando:\n- el usuario provee descripción de vulnerabilidad y pide severidad\n- el usuario tiene un vector CVSS y quiere review\n- el usuario disputa una severidad\n\nSKIP cuando:\n- el usuario solo quiere una label ("high"/"low") sin justificación\n- no hay vulnerabilidad descrita',
+          inputs: '- Descripción de la vulnerabilidad (o draft del finding)\n- Opcional: contexto de deployment (internet-facing vs interno, auth requerida, etc.)',
+          workflow: '1. Identificar la clase de vulnerabilidad (usar CWE si aplica)\n2. Recorrer cada métrica Base (AV, AC, PR, UI, S, C, I, A) y asignar\n3. Para cada métrica, escribir UNA oración justificando la elección contra la evidencia\n4. Computar el score y label\n5. Notar Temporal/Environmental si el usuario dio contexto\n6. Flaguear cualquier métrica donde la evidencia sea insuficiente para asignar con confianza',
+          examples: 'Trigger: "CVSS para XSS stored en el admin dashboard?"\nNo-trigger: "XSS es malo?" — explicar XSS, no scorear.',
+          output: 'Markdown:\n**Vector:** CVSS:3.1/AV:.../AC:.../...\n**Score:** X.X (Severity Label)\n\n**Justificación:**\n- AV: <razón>\n- AC: <razón>\n- (un bullet por métrica asignada)\n\n**Evidencia insuficiente para:** <lista de métricas que no se pudieron asignar con confianza>',
+        },
+        ruleIdx: [0, 1, 3],
+        customRules: ['asignar métricas sin justificación', 'elegir una label primero y back-fitear las métricas', 'adivinar cuando la evidencia es insuficiente'],
+        creativity: 0.05, rigor: 1.0, verbosity: 1, tone: 3,
+        structureOn: ['_yaml_name','_yaml_description','purpose','triggers','inputs','workflow','rules','examples','output'],
+      },
+      'evidence-validator': {
+        label: 'Validador de evidencia',
+        values: {
+          _yaml_name: 'evidence-validator',
+          _yaml_description: 'Usar para validar que un finding pentest, writeup de seguridad o reporte de vulnerabilidad esté totalmente groundeado en evidencia citada. Revisa el texto claim-por-claim y flaguea cualquier afirmación no trazable a un artifact referenciado. Triggers en pedidos como "validá este finding", "chequeá este reporte por inferencias", "auditá mi writeup".',
+          purpose: 'Auditar un finding o reporte y flaguear toda afirmación que no sea trazable directamente a la evidencia citada.',
+          triggers: 'TRIGGER cuando:\n- el usuario pega un finding/reporte y pide review de grounding de evidencia\n- el usuario pide encontrar claims sin soporte\n- el usuario quiere sanity check antes del delivery al cliente\n\nSKIP cuando:\n- el usuario quiere review de estilo, no de grounding\n- no hay sección de evidencia contra la cual validar',
+          inputs: '- Texto del finding o reporte\n- Evidencia (citada o adjunta)',
+          workflow: '1. Leer el finding completo\n2. Extraer cada claim factual (uno por línea)\n3. Para cada claim, chequear: hay cita? La cita realmente soporta este claim exacto?\n4. Categorizar cada claim: [GROUNDED] / [CITA DÉBIL] / [SIN CITA] / [INFERENCIA]\n5. Listar todos los claims no-[GROUNDED] con el texto exacto y el problema\n6. Sugerir la edición mínima para groundearlo',
+          examples: 'Trigger: "Reviewá este finding por claims sin soporte: [texto]"\nNo-trigger: "Este writeup está bien?" — muy vago, preguntar qué aspecto.',
+          output: 'Markdown:\n**Resumen:** X grounded / Y débiles / Z sin grounding / W inferencias\n\n**Issues:**\n1. [SEVERIDAD] "<cita exacta del finding>" — <qué está mal> — <fix sugerido>\n2. ...',
+        },
+        ruleIdx: [0, 1, 3, 4],
+        customRules: ['aceptar inferencias como grounded', 'parafrasear el texto original al flaguear', 'flaguear issues de estilo en este skill (fuera de scope)'],
+        creativity: 0.05, rigor: 1.0, verbosity: 1, tone: 2,
+        structureOn: ['_yaml_name','_yaml_description','purpose','triggers','inputs','workflow','rules','examples','output'],
+      },
+      'owasp-categorizer': {
+        label: 'Categorizador OWASP',
+        values: {
+          _yaml_name: 'owasp-categorizer',
+          _yaml_description: 'Usar para categorizar una vulnerabilidad o finding dentro de OWASP Top 10 (web) o OWASP Mobile Top 10. Triggers en pedidos como "qué categoría OWASP", "cuál Top 10 es esto", "clasificá este finding". Skip para contenido que no sea vulnerabilidad, o cuando el usuario ya tiene una categoría que confía.',
+          purpose: 'Mapear una vulnerabilidad descrita a la categoría OWASP Top 10 (2021) o OWASP Mobile Top 10 (2024) apropiada, con justificación.',
+          triggers: 'TRIGGER cuando:\n- el usuario describe una vulnerabilidad y pide categoría OWASP\n- el usuario tiene un draft de finding y quiere tagging OWASP\n\nSKIP cuando:\n- la vulnerabilidad está descrita demasiado vaga para mapear con confianza\n- el usuario quiere CWE en cambio (usar skill CWE)',
+          inputs: '- Descripción de la vulnerabilidad o texto del finding\n- Opcional: hint de plataforma (web / mobile / API)',
+          workflow: '1. Identificar la plataforma (web → Top 10 2021; mobile → Mobile Top 10 2024; API → API Top 10 2023)\n2. Matchear la clase de vulnerabilidad con la categoría más cercana\n3. Justificar la elección en una oración citando la definición de la categoría\n4. Si dos categorías se solapan, nombrar ambas y explicar la primaria\n5. Si ninguna categoría encaja, decirlo explícitamente — no forzar el fit',
+          examples: 'Trigger: "Categoría OWASP para XSS stored que requiere auth de admin?"\nNo-trigger: "Qué es OWASP?" — responder normal, no categorizar.',
+          output: 'Markdown:\n**Plataforma:** Web | Mobile | API\n**Categoría primaria:** AXX:YYYY — <nombre>\n**Secundaria (si aplica):** AXX:YYYY — <nombre>\n**Justificación:** <una oración>',
+        },
+        ruleIdx: [0, 1, 3],
+        customRules: ['forzar una categoría cuando el fit es pobre', 'citar categorías OWASP sin el año (las definiciones cambian)'],
+        creativity: 0.1, rigor: 0.9, verbosity: 0, tone: 2,
+        structureOn: ['_yaml_name','_yaml_description','purpose','triggers','inputs','workflow','rules','examples','output'],
+      },
+    },
+  },
+};
+
+// ============================================================
+// PLACEHOLDERS per mode / section / lang
+// ============================================================
+const PLACEHOLDERS = {
+  prompt: {
+    en: {
+      role: 'You are a senior pentester with 20 years of offensive security experience…',
+      context: 'I\'m auditing a PCI-DSS payment API. I have evidence of…',
+      task: 'Write the "Finding" section of the report for the following vulnerability…',
+      input: '<<< paste HTTP request, code, logs, etc. >>>',
+      constraints: '- Max 200 words\n- No recommendations yet',
+      format: 'Markdown with H3 headers. Code blocks with declared language.',
+      examples: 'Example 1:\nInput: …\nOutput: …',
+    },
+    es: {
+      role: 'Sos un pentester senior con 20 años de experiencia en offensive security…',
+      context: 'Estoy auditando una API de pagos PCI-DSS. Tengo evidencia de…',
+      task: 'Redactá la sección "Finding" del reporte para la siguiente vulnerabilidad…',
+      input: '<<< pegar request HTTP, código, logs, etc. >>>',
+      constraints: '- Máx 200 palabras\n- Español rioplatense\n- Sin recomendaciones todavía',
+      format: 'Markdown con headers H3. Bloques de código con lenguaje declarado.',
+      examples: 'Ejemplo 1:\nInput: …\nOutput: …',
+    },
+  },
+  claudemd: {
+    en: {
+      project: 'Brief description of what this repo is and what it produces.',
+      stack: 'Languages, frameworks, key libraries, versions if they matter.',
+      structure: 'Key directories and what lives in each.\n- `src/` — main code\n- `tests/` — tests',
+      commands: '- Test: `pytest`\n- Lint: `ruff check`\n- Dev: `make dev`',
+      conventions: '- Code style, naming, error handling patterns\n- Things this codebase does differently from defaults',
+      workflow: 'How a typical change flows: branch → PR → review → merge.\nAny project-specific rituals.',
+      notes: 'Gotchas, non-obvious context, history of decisions, links to ADRs.',
+    },
+    es: {
+      project: 'Descripción breve de qué es este repo y qué produce.',
+      stack: 'Lenguajes, frameworks, librerías clave, versiones si importan.',
+      structure: 'Directorios clave y qué vive en cada uno.\n- `src/` — código principal\n- `tests/` — tests',
+      commands: '- Test: `pytest`\n- Lint: `ruff check`\n- Dev: `make dev`',
+      conventions: '- Estilo de código, naming, patrones de manejo de errores\n- Cosas que este codebase hace distinto de los defaults',
+      workflow: 'Cómo fluye un cambio típico: branch → PR → review → merge.\nRituales específicos del proyecto.',
+      notes: 'Gotchas, contexto no-obvio, historia de decisiones, links a ADRs.',
+    },
+  },
+  skillmd: {
+    en: {
+      _yaml_name: 'my-skill-name',
+      _yaml_description: 'When Claude should load this skill. Be specific about triggers — the description is what Claude uses to decide.',
+      purpose: 'One-paragraph description of what this skill enables Claude to do.',
+      triggers: 'TRIGGER when:\n- <specific condition>\n- <another condition>\n\nSKIP when:\n- <when not to use this>',
+      inputs: 'What the skill expects from the user or the context.',
+      workflow: '1. <first step>\n2. <second step>\n3. <third step>',
+      examples: 'Example trigger: "<user message that should activate this skill>"\nExample non-trigger: "<message that should NOT activate>"',
+      output: 'The shape of what the skill produces. Headers, fields, format.',
+    },
+    es: {
+      _yaml_name: 'mi-skill-name',
+      _yaml_description: 'Cuándo Claude debe cargar este skill. Sé específico sobre los triggers — la descripción es lo que Claude usa para decidir.',
+      purpose: 'Descripción de un párrafo de qué le permite hacer este skill a Claude.',
+      triggers: 'TRIGGER cuando:\n- <condición específica>\n- <otra condición>\n\nSKIP cuando:\n- <cuándo no usar esto>',
+      inputs: 'Qué espera el skill del usuario o del contexto.',
+      workflow: '1. <primer paso>\n2. <segundo paso>\n3. <tercer paso>',
+      examples: 'Ejemplo trigger: "<mensaje del usuario que debería activar este skill>"\nEjemplo no-trigger: "<mensaje que NO debería activar>"',
+      output: 'La forma de lo que produce el skill. Headers, campos, formato.',
+    },
+  },
+};
+
+// ============================================================
+// i18n (UI strings)
+// ============================================================
+const I18N = {
+  en: {
+    hdr_tokens: 'tokens',
+    hdr_rules: 'rules',
+    hdr_ai_panel: 'AI panel',
+
+    offline_mode: 'offline mode',
+    api_ready: (p) => `${p} / ready`,
+    api_no_key: 'no key',
+
+    mode_prompt_desc: 'One-shot instruction for a single task. Pasted into a conversation.',
+    mode_claudemd_desc: 'Project context file. Auto-loaded by Claude Code at the repo root.',
+    mode_skillmd_desc: 'Reusable agent capability. Loaded dynamically when triggers match.',
+
+    offline_banner: {
+      prompt: '<b>Offline mode.</b> Build prompts without any API — just structure, rules, and copy/download. Toggle the AI panel in the header if you want refinement via Claude/GPT.',
+      claudemd: '<b>Offline mode.</b> Generate a CLAUDE.md to drop at your repo root. Claude Code reads it automatically when you work in that directory.',
+      skillmd: '<b>Offline mode.</b> Generate a SKILL.md following the agentskills.io standard. Save it as <code>skills/&lt;name&gt;/SKILL.md</code>.',
+    },
+
+    panel_presets: 'PRESETS',
+    panel_params: 'PARAMETERS',
+    panel_structure: 'STRUCTURE',
+    panel_content: 'CONTENT',
+    panel_no_rules: 'NO · RULES',
+    panel_output: 'GENERATED',
+    panel_ai_backend: 'AI BACKEND',
+    panel_ai_actions: 'AI ACTIONS',
+
+    output_title: {
+      prompt: 'GENERATED PROMPT',
+      claudemd: 'GENERATED CLAUDE.md',
+      skillmd: 'GENERATED SKILL.md',
+    },
+
+    download_ext: {
+      prompt: '.txt',
+      claudemd: 'CLAUDE.md',
+      skillmd: 'SKILL.md',
+    },
+
+    content_mode_tag: {
+      prompt: 'edit active sections',
+      claudemd: 'project context fields',
+      skillmd: 'skill definition fields',
+    },
+
+    tag_faders: 'faders',
+    tag_sections: 'sections',
+    tag_optional: 'optional',
+    tag_refine_test: 'refine / test',
+    tag_live: 'live preview',
+
+    cta_copy: 'COPY',
+    cta_copy_sub: 'to clipboard',
+    cta_download: 'DOWNLOAD',
+    output_preview: 'PREVIEW',
+    output_preview_hint: 'auto-updates as you edit',
+
+    preset_placeholder: '— load preset —',
+    preset_count: (base, custom) => custom === 0 ? `${base} base` : `${base} base + ${custom} custom`,
+
+    btn_save: 'save',
+    btn_reset: 'reset',
+    btn_del_preset: 'del',
+    btn_add: 'add',
+    btn_copy: 'copy',
+    btn_save_key: 'save key',
+    btn_clear: 'clear',
+    btn_ai_improve: '↻ IMPROVE',
+    btn_ai_test: '▷ TEST RUN',
+    btn_ai_critique: '⌕ CRITIQUE',
+    btn_ai_apply: '↰ apply',
+
+    fader_creativity: 'CREATIVITY',
+    fader_creativity_min: 'literal',
+    fader_creativity_mid: 'balanced',
+    fader_creativity_max: 'free',
+    fader_rigor: 'RIGOR',
+    fader_rigor_min: 'flexible',
+    fader_rigor_mid: 'standard',
+    fader_rigor_max: 'strict',
+    fader_verbosity: 'VERBOSITY',
+    fader_verbosity_scale: ['concise', 'medium', 'detailed', 'exhaustive'],
+    fader_tone: 'TONE',
+    fader_tone_scale: ['casual', 'neutral', 'technical', 'formal'],
+
+    input_custom_rule: 'add custom NO rule… (enter)',
+
+    stat_chars: 'chars',
+    stat_tokens: 'tokens',
+    stat_sections: 'sections',
+    stat_rules: 'rules',
+    rules_count: (n) => `${n} active`,
+    required_tag: 'required',
+
+    lbl_provider: 'provider',
+    lbl_model: 'model',
+    lbl_apikey: 'api key',
+    warn_label: '⚠ NOTICE:',
+    warn_text: ' API keys are stored only in your browser\'s localStorage and sent directly to the provider. For production use a backend proxy.',
+    ai_actions_help: 'Actions use your current output + faders (creativity → temperature). NO rules are injected as hard meta-instructions.',
+    key_set: (k) => `set (${k.slice(0,7)}…)`,
+    key_none: '— not saved —',
+
+    footer_made_by: 'made by',
+    footer_local: '100% local · no telemetry',
+    footer_state: 'state',
+
+    // toasts
+    toast_preset_loaded: (n) => `preset loaded: ${n}`,
+    toast_preset_saved: (n) => `preset saved: ${n}`,
+    toast_preset_deleted: 'preset deleted',
+    toast_no_custom_presets: 'no custom presets in this mode',
+    toast_reset_ok: 'reset OK',
+    toast_confirm_reset: 'Reset the current mode? (keeps API key and custom presets)',
+    toast_prompt_name: 'Preset name:',
+    toast_delete_id: 'ID of preset to delete:\n\n',
+    toast_dup_rule: 'duplicate rule',
+    toast_copied: 'copied to clipboard',
+    toast_empty: 'empty output',
+    toast_cant_copy: 'could not copy',
+    toast_key_saved: 'key saved (localStorage)',
+    toast_key_empty: 'empty key',
+    toast_key_cleared: 'key cleared',
+    toast_no_apikey: 'missing API key — enable the AI panel and set one',
+    toast_ai_error: 'AI call error',
+    toast_applied: (n) => `applied: ${n} sections`,
+    toast_no_sections: 'no sections detected — copied to clipboard',
+    toast_hard_rules_auto: 'rules section is auto-managed (controlled by NO rules)',
+    toast_required: 'this section is required',
+    toast_mode_switched: (m) => `mode: ${m}`,
+
+    // validation messages (skill mode)
+    validation_ok: 'Valid',
+    validation_warn: 'Warnings',
+    validation_err: 'Errors',
+    v_name_required: '`name` is required',
+    v_name_kebab: '`name` must be kebab-case (lowercase, digits, hyphens only)',
+    v_name_too_long: '`name` should be ≤ 64 chars',
+    v_desc_required: '`description` is required',
+    v_desc_too_short: '`description` is too short — Claude uses it to decide when to load the skill (aim for ≥ 80 chars, with explicit triggers)',
+    v_desc_no_trigger: '`description` does not mention when to load this skill (try "use when…", "triggers on…")',
+    v_too_long: 'SKILL.md is over 500 lines — consider splitting into referenced files',
+
+    // hard rules section trailer
+    rigor_high: 'If a rule conflicts with the task, the RULE wins. Ask for clarification.',
+    rigor_extreme: 'Before responding, internally verify you comply with each rule.',
+    style_section: 'STYLE',
+    verbosity_label: 'Verbosity',
+    tone_label: 'Tone',
+
+    // base NO rules (universal across modes)
+    base_rules: [
+      'fabricate evidence or data',
+      'infer things not present in the input',
+      'be redundant (one idea = one sentence)',
+      'use filler or preambles',
+      'add unnecessary disclaimers',
+      'use emojis',
+      'use markdown if not requested',
+      'change the input\'s language',
+      'apologize',
+      'summarize what you will do before doing it',
+      'include untested code',
+      'hallucinate APIs or functions',
+    ],
+
+    // AI meta-prompts
+    ai_improve_system: (rules, mode) => {
+      const ctx = {
+        prompt: 'a prompt',
+        claudemd: 'a CLAUDE.md project context file',
+        skillmd: 'a SKILL.md agent skill (with YAML frontmatter)',
+      }[mode];
+      return `You are a prompt engineer. Your task: refine the user's ${ctx} to be clearer, more actionable and robust, preserving intent and hard rules.
+
+HARD RULES that must survive refinement:
+${rules || '(none)'}
+
+OUTPUT: return the refined ${ctx} in the SAME format. No meta comments, no "Here you go", just the refined output.`;
+    },
+    ai_improve_user: (p) => 'Current:\n\n' + p + '\n\n---\nRefine this.',
+    ai_critique_system: (mode) => {
+      const what = {
+        prompt: 'prompt',
+        claudemd: 'CLAUDE.md',
+        skillmd: 'SKILL.md',
+      }[mode];
+      return `You are a reviewer. Analyze the user's ${what} and return an actionable critique: ambiguities, contradictions, weak sections, over-specification, redundant rules.
+
+For SKILL.md specifically, also check: is the description specific enough to trigger correctly? Are TRIGGER/SKIP conditions clear? Is the workflow concrete?
+
+Format: numbered list of issues. Each one: [SEVERITY] what is wrong → concrete fix. No preambles.`;
+    },
+    ai_critique_user: (p) => 'To review:\n\n' + p,
+    ai_test_user: '(Test mode: execute the previous prompt with a realistic sample input that you choose, and show the output. Briefly state the input used.)',
+  },
+
+  es: {
+    hdr_tokens: 'tokens',
+    hdr_rules: 'reglas',
+    hdr_ai_panel: 'panel IA',
+
+    offline_mode: 'modo offline',
+    api_ready: (p) => `${p} / lista`,
+    api_no_key: 'sin key',
+
+    mode_prompt_desc: 'Instrucción one-shot para una tarea. Se pega en una conversación.',
+    mode_claudemd_desc: 'Archivo de contexto del proyecto. Claude Code lo carga automático en la raíz del repo.',
+    mode_skillmd_desc: 'Capacidad reusable. Se carga dinámicamente cuando matchean los triggers.',
+
+    offline_banner: {
+      prompt: '<b>Modo offline.</b> Generá prompts sin API — solo estructura, reglas y copiar/descargar. Activá el panel IA si querés refinar con Claude/GPT.',
+      claudemd: '<b>Modo offline.</b> Generá un CLAUDE.md para droppear en la raíz de tu repo. Claude Code lo lee automático al trabajar ahí.',
+      skillmd: '<b>Modo offline.</b> Generá un SKILL.md siguiendo el estándar agentskills.io. Guardalo como <code>skills/&lt;name&gt;/SKILL.md</code>.',
+    },
+
+    panel_presets: 'PRESETS',
+    panel_params: 'PARÁMETROS',
+    panel_structure: 'ESTRUCTURA',
+    panel_content: 'CONTENIDO',
+    panel_no_rules: 'REGLAS · NO',
+    panel_output: 'GENERADO',
+    panel_ai_backend: 'BACKEND IA',
+    panel_ai_actions: 'ACCIONES IA',
+
+    output_title: {
+      prompt: 'PROMPT GENERADO',
+      claudemd: 'CLAUDE.md GENERADO',
+      skillmd: 'SKILL.md GENERADO',
+    },
+
+    download_ext: {
+      prompt: '.txt',
+      claudemd: 'CLAUDE.md',
+      skillmd: 'SKILL.md',
+    },
+
+    content_mode_tag: {
+      prompt: 'editá las secciones activas',
+      claudemd: 'campos de contexto del proyecto',
+      skillmd: 'campos de definición del skill',
+    },
+
+    tag_faders: 'faders',
+    tag_sections: 'secciones',
+    tag_optional: 'opcional',
+    tag_refine_test: 'refinar / testear',
+    tag_live: 'preview en vivo',
+
+    cta_copy: 'COPIAR',
+    cta_copy_sub: 'al portapapeles',
+    cta_download: 'DESCARGAR',
+    output_preview: 'PREVIEW',
+    output_preview_hint: 'se actualiza solo al editar',
+
+    preset_placeholder: '— cargar preset —',
+    preset_count: (base, custom) => custom === 0 ? `${base} base` : `${base} base + ${custom} custom`,
+
+    btn_save: 'guardar',
+    btn_reset: 'reset',
+    btn_del_preset: 'borrar',
+    btn_add: 'agregar',
+    btn_copy: 'copiar',
+    btn_save_key: 'guardar key',
+    btn_clear: 'borrar',
+    btn_ai_improve: '↻ MEJORAR',
+    btn_ai_test: '▷ TEST RUN',
+    btn_ai_critique: '⌕ CRITICAR',
+    btn_ai_apply: '↰ aplicar',
+
+    fader_creativity: 'CREATIVIDAD',
+    fader_creativity_min: 'literal',
+    fader_creativity_mid: 'balanceado',
+    fader_creativity_max: 'libre',
+    fader_rigor: 'RIGOR',
+    fader_rigor_min: 'flexible',
+    fader_rigor_mid: 'standard',
+    fader_rigor_max: 'estricto',
+    fader_verbosity: 'VERBOSIDAD',
+    fader_verbosity_scale: ['conciso', 'medio', 'detallado', 'exhaustivo'],
+    fader_tone: 'TONO',
+    fader_tone_scale: ['casual', 'neutral', 'técnico', 'formal'],
+
+    input_custom_rule: 'agregar regla NO custom… (enter)',
+
+    stat_chars: 'chars',
+    stat_tokens: 'tokens',
+    stat_sections: 'secciones',
+    stat_rules: 'reglas',
+    rules_count: (n) => `${n} activa${n === 1 ? '' : 's'}`,
+    required_tag: 'requerido',
+
+    lbl_provider: 'provider',
+    lbl_model: 'modelo',
+    lbl_apikey: 'api key',
+    warn_label: '⚠ AVISO:',
+    warn_text: ' Las API keys se guardan solo en el localStorage de tu navegador y se envían directo al provider. Para producción usá un proxy backend.',
+    ai_actions_help: 'Las acciones usan el output actual + faders (creatividad → temperature). Las reglas NO se inyectan como meta-instrucciones duras.',
+    key_set: (k) => `cargada (${k.slice(0,7)}…)`,
+    key_none: '— sin guardar —',
+
+    footer_made_by: 'hecho por',
+    footer_local: '100% local · sin telemetría',
+    footer_state: 'estado',
+
+    toast_preset_loaded: (n) => `preset cargado: ${n}`,
+    toast_preset_saved: (n) => `preset guardado: ${n}`,
+    toast_preset_deleted: 'preset eliminado',
+    toast_no_custom_presets: 'no hay presets custom en este modo',
+    toast_reset_ok: 'reset OK',
+    toast_confirm_reset: '¿Resetear el modo actual? (no toca API key ni presets custom)',
+    toast_prompt_name: 'Nombre del preset:',
+    toast_delete_id: 'ID del preset a borrar:\n\n',
+    toast_dup_rule: 'regla duplicada',
+    toast_copied: 'copiado al clipboard',
+    toast_empty: 'output vacío',
+    toast_cant_copy: 'no se pudo copiar',
+    toast_key_saved: 'key guardada (localStorage)',
+    toast_key_empty: 'key vacía',
+    toast_key_cleared: 'key borrada',
+    toast_no_apikey: 'falta API key — activá el panel IA y cargá una',
+    toast_ai_error: 'error en llamada IA',
+    toast_applied: (n) => `aplicado: ${n} secciones`,
+    toast_no_sections: 'no se detectaron secciones — copiado al clipboard',
+    toast_hard_rules_auto: 'la sección de reglas es automática (controlada por las reglas NO)',
+    toast_required: 'esta sección es obligatoria',
+    toast_mode_switched: (m) => `modo: ${m}`,
+
+    validation_ok: 'Válido',
+    validation_warn: 'Warnings',
+    validation_err: 'Errores',
+    v_name_required: '`name` es obligatorio',
+    v_name_kebab: '`name` debe ser kebab-case (minúsculas, dígitos, guiones)',
+    v_name_too_long: '`name` debería ser ≤ 64 chars',
+    v_desc_required: '`description` es obligatorio',
+    v_desc_too_short: '`description` es muy corta — Claude la usa para decidir cuándo cargar el skill (≥ 80 chars, con triggers explícitos)',
+    v_desc_no_trigger: '`description` no menciona cuándo cargar este skill (probá "usar cuando…", "triggers en…")',
+    v_too_long: 'SKILL.md supera 500 líneas — considerá splitearlo en archivos referenciados',
+
+    rigor_high: 'Si una regla entra en conflicto con la tarea, GANA la regla. Pedí clarificación.',
+    rigor_extreme: 'Antes de responder, verificá internamente que cumplís cada regla.',
+    style_section: 'ESTILO',
+    verbosity_label: 'Verbosidad',
+    tone_label: 'Tono',
+
+    base_rules: [
+      'inventar evidencia ni datos',
+      'inferir cosas no presentes en el input',
+      'ser redundante (una idea = una frase)',
+      'usar filler ni preámbulos',
+      'agregar disclaimers innecesarios',
+      'usar emojis',
+      'usar markdown si no se pidió',
+      'cambiar el idioma del input',
+      'pedir disculpas',
+      'resumir lo que vas a hacer antes de hacerlo',
+      'incluir código no probado',
+      'alucinar APIs ni funciones',
+    ],
+
+    ai_improve_system: (rules, mode) => {
+      const ctx = {
+        prompt: 'un prompt',
+        claudemd: 'un archivo CLAUDE.md de contexto de proyecto',
+        skillmd: 'un SKILL.md (con YAML frontmatter)',
+      }[mode];
+      return `Sos un prompt engineer. Tu tarea: refinar ${ctx} del usuario para que sea más claro, accionable y robusto, preservando intención y reglas duras.
+
+REGLAS HARD que deben sobrevivir al refinamiento:
+${rules || '(ninguna)'}
+
+OUTPUT: devolvé ${ctx} refinado en el MISMO formato. Sin comentarios meta, sin "Acá tenés", solo el output refinado.`;
+    },
+    ai_improve_user: (p) => 'Actual:\n\n' + p + '\n\n---\nRefiná esto.',
+    ai_critique_system: (mode) => {
+      const what = {
+        prompt: 'prompt',
+        claudemd: 'CLAUDE.md',
+        skillmd: 'SKILL.md',
+      }[mode];
+      return `Sos un reviewer. Analizá el ${what} del usuario y devolvé crítica accionable: ambigüedades, contradicciones, secciones débiles, sobre-especificación, reglas redundantes.
+
+Para SKILL.md específicamente, chequeá además: ¿la description es lo suficientemente específica para triggerear correctamente? ¿Las condiciones TRIGGER/SKIP son claras? ¿El workflow es concreto?
+
+Formato: lista numerada de issues. Cada uno: [SEVERIDAD] qué está mal → fix concreto. Sin preámbulos.`;
+    },
+    ai_critique_user: (p) => 'Para revisar:\n\n' + p,
+    ai_test_user: '(Modo test: ejecutá el prompt anterior con un input de muestra realista que vos elijas, y mostrá la salida. Indicá brevemente el input usado.)',
+  },
+};
+
+const MODELS = {
+  anthropic: [
+    { id: 'claude-opus-4-5', label: 'claude-opus-4-5 (latest)' },
+    { id: 'claude-sonnet-4-5', label: 'claude-sonnet-4-5' },
+    { id: 'claude-haiku-4-5', label: 'claude-haiku-4-5 (fast)' },
+    { id: 'claude-3-5-sonnet-20241022', label: 'claude-3-5-sonnet' },
+  ],
+  openai: [
+    { id: 'gpt-4o', label: 'gpt-4o' },
+    { id: 'gpt-4o-mini', label: 'gpt-4o-mini (fast)' },
+    { id: 'gpt-4-turbo', label: 'gpt-4-turbo' },
+  ],
+};
+
+const STORAGE_KEY = 'openbash-prompt-editor-v3';
+
+// state per mode (so switching mode doesn't lose work)
+function emptyModeState(mode) {
+  const def = MODE_DEFS[mode];
+  const sectionsOn = {};
+  def.sections.forEach(s => {
+    sectionsOn[s.id] = !!s.required || def.defaultOn.includes(s.id);
+  });
+  return {
+    values: {},
+    ruleActiveIdx: new Set([0, 1, 2, 3]),
+    customRules: [],
+    creativity: mode === 'skillmd' ? 0.15 : 0.3,
+    rigor: mode === 'skillmd' ? 0.9 : 0.8,
+    verbosity: mode === 'claudemd' ? 2 : 1,
+    tone: 2,
+    sectionsOn,
+  };
+}
+
+let state = {
+  lang: 'en',
+  mode: 'prompt',
+  modes: {
+    prompt: emptyModeState('prompt'),
+    claudemd: emptyModeState('claudemd'),
+    skillmd: emptyModeState('skillmd'),
+  },
+  ai: {
+    panelOn: false,
+    provider: 'anthropic',
+    model: 'claude-opus-4-5',
+    keys: { anthropic: '', openai: '' },
+  },
+  customPresets: { prompt: {}, claudemd: {}, skillmd: {} },
+};
+
+function t() { return I18N[state.lang]; }
+function ms() { return state.modes[state.mode]; }  // current mode state
+function md() { return MODE_DEFS[state.mode]; }    // current mode def
+
+// ============================================================
+// PERSISTENCE
+// ============================================================
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      const nav = (navigator.language || 'en').toLowerCase();
+      if (nav.startsWith('es')) state.lang = 'es';
+      return;
+    }
+    const s = JSON.parse(raw);
+    if (s.lang) state.lang = s.lang;
+    if (s.mode && MODE_DEFS[s.mode]) state.mode = s.mode;
+    if (s.modes) {
+      for (const m of ['prompt','claudemd','skillmd']) {
+        if (s.modes[m]) {
+          const ms = state.modes[m];
+          if (s.modes[m].values) ms.values = s.modes[m].values;
+          if (Array.isArray(s.modes[m].ruleActiveIdx)) ms.ruleActiveIdx = new Set(s.modes[m].ruleActiveIdx);
+          if (s.modes[m].customRules) ms.customRules = s.modes[m].customRules;
+          if (typeof s.modes[m].creativity === 'number') ms.creativity = s.modes[m].creativity;
+          if (typeof s.modes[m].rigor === 'number') ms.rigor = s.modes[m].rigor;
+          if (typeof s.modes[m].verbosity === 'number') ms.verbosity = s.modes[m].verbosity;
+          if (typeof s.modes[m].tone === 'number') ms.tone = s.modes[m].tone;
+          if (s.modes[m].sectionsOn) {
+            // merge to preserve required flags from def
+            const def = MODE_DEFS[m];
+            def.sections.forEach(sec => {
+              if (sec.required) ms.sectionsOn[sec.id] = true;
+              else if (sec.id in s.modes[m].sectionsOn) ms.sectionsOn[sec.id] = s.modes[m].sectionsOn[sec.id];
+            });
+          }
+        }
+      }
+    }
+    if (s.ai) {
+      state.ai.panelOn = !!s.ai.panelOn;
+      state.ai.provider = s.ai.provider || 'anthropic';
+      state.ai.model = s.ai.model || 'claude-opus-4-5';
+      state.ai.keys = s.ai.keys || { anthropic: '', openai: '' };
+    }
+    if (s.customPresets) {
+      for (const m of ['prompt','claudemd','skillmd']) {
+        if (s.customPresets[m]) state.customPresets[m] = s.customPresets[m];
+      }
+    }
+  } catch(e) { console.warn('state load failed', e); }
+}
+
+function saveState() {
+  try {
+    const modesSerialized = {};
+    for (const m of ['prompt','claudemd','skillmd']) {
+      const ms = state.modes[m];
+      modesSerialized[m] = {
+        values: ms.values,
+        ruleActiveIdx: [...ms.ruleActiveIdx],
+        customRules: ms.customRules,
+        creativity: ms.creativity,
+        rigor: ms.rigor,
+        verbosity: ms.verbosity,
+        tone: ms.tone,
+        sectionsOn: ms.sectionsOn,
+      };
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      lang: state.lang,
+      mode: state.mode,
+      modes: modesSerialized,
+      ai: state.ai,
+      customPresets: state.customPresets,
+    }));
+  } catch(e) { console.warn('state save failed', e); }
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => document.querySelectorAll(s);
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function toast(msg, type='') {
+  const el = $('#toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + type;
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.className = 'toast', 2200);
+}
+
+function getSectionName(s) { return state.lang === 'es' ? s.nameES : s.nameEN; }
+function getSectionDesc(s) { return state.lang === 'es' ? s.descES : s.descEN; }
+function getPlaceholder(sectionId) {
+  return (PLACEHOLDERS[state.mode]?.[state.lang]?.[sectionId]) || '';
+}
+
+// ============================================================
+// MODE SWITCHER
+// ============================================================
+function setupModeSwitcher() {
+  $$('.mode-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const newMode = btn.dataset.mode;
+      if (newMode === state.mode) return;
+      state.mode = newMode;
+      $$('.mode-tab').forEach(b => b.classList.toggle('active', b.dataset.mode === newMode));
+      applyModeChange();
+      saveState();
+    });
+  });
+}
+
+function applyModeChange() {
+  applyModeUI();
+  syncFadersFromState();
+  renderStructure();
+  renderContentFields();
+  renderRules();
+  refreshCustomPresetsList();
+  renderOutput();
+}
+
+function applyModeUI() {
+  const L = t();
+  $('#output-panel-title').textContent = L.output_title[state.mode];
+  const dl = $('#download-ext-label');
+  if (dl) dl.textContent = L.download_ext[state.mode];
+  $('#content-mode-tag').textContent = L.content_mode_tag[state.mode];
+  $('#offline-banner').innerHTML = '<span class="led"></span><span>' + L.offline_banner[state.mode] + '</span>';
+}
+
+// ============================================================
+// i18n APPLY
+// ============================================================
+function applyI18n() {
+  const L = t();
+  document.documentElement.lang = state.lang;
+
+  $$('[data-i18n]').forEach(el => {
+    const k = el.getAttribute('data-i18n');
+    if (L[k] !== undefined && typeof L[k] === 'string') el.textContent = L[k];
+  });
+  $$('[data-i18n-attr]').forEach(el => {
+    const v = el.getAttribute('data-i18n-attr');
+    const [attr, key] = v.split(':');
+    if (L[key] !== undefined && typeof L[key] === 'string') el.setAttribute(attr, L[key]);
+  });
+
+  // mode tabs descs
+  $$('.mode-tab').forEach(tab => {
+    const m = tab.dataset.mode;
+    const desc = tab.querySelector('.mode-desc');
+    if (desc) desc.textContent = L['mode_' + m + '_desc'] || '';
+  });
+
+  $('#verbosity-scale').innerHTML = L.fader_verbosity_scale.map(x => `<span>${x}</span>`).join('');
+  $('#tone-scale').innerHTML = L.fader_tone_scale.map(x => `<span>${x}</span>`).join('');
+
+  $$('.lang-switch button').forEach(b => {
+    b.classList.toggle('active', b.dataset.lang === state.lang);
+  });
+
+  applyModeUI();
+  refreshFaderLabels();
+  refreshAPIStatus();
+  refreshCustomPresetsList();
+  renderStructure();
+  renderContentFields();
+  renderRules();
+  renderOutput();
+}
+
+function refreshFaderLabels() {
+  const L = t();
+  const cur = ms();
+  $('#verbosity-val').textContent = L.fader_verbosity_scale[cur.verbosity];
+  $('#tone-val').textContent = L.fader_tone_scale[cur.tone];
+}
+
+function syncFadersFromState() {
+  const cur = ms();
+  $('#creativity').value = cur.creativity;
+  $('#creativity-val').textContent = cur.creativity.toFixed(2);
+  $('#rigor').value = cur.rigor;
+  $('#rigor-val').textContent = cur.rigor.toFixed(2);
+  $('#verbosity').value = cur.verbosity;
+  $('#tone').value = cur.tone;
+  refreshFaderLabels();
+}
+
+// ============================================================
+// PRESETS UI
+// ============================================================
+function refreshCustomPresetsList() {
+  const L = t();
+  const base = PRESETS[state.mode][state.lang];
+  const baseG = $('#base-presets-group');
+  baseG.innerHTML = '';
+  for (const [id, p] of Object.entries(base)) {
+    const o = document.createElement('option');
+    o.value = id;
+    o.textContent = p.label;
+    baseG.appendChild(o);
+  }
+
+  const customG = $('#custom-presets-group');
+  customG.innerHTML = '';
+  const custom = state.customPresets[state.mode] || {};
+  const entries = Object.entries(custom);
+  entries.forEach(([id, p]) => {
+    const o = document.createElement('option');
+    o.value = id;
+    o.textContent = p.label;
+    customG.appendChild(o);
+  });
+
+  $('#preset-count').textContent = L.preset_count(Object.keys(base).length, entries.length);
+}
+
+// ============================================================
+// RENDER : structure
+// ============================================================
+function renderStructure() {
+  const L = t();
+  const def = md();
+  const cur = ms();
+  const wrap = $('#struct-list');
+  wrap.innerHTML = '';
+
+  def.sections.forEach(s => {
+    const on = !!cur.sectionsOn[s.id];
+    const el = document.createElement('div');
+    const isRequired = !!s.required;
+    el.className = 'struct-item' + (on ? ' on' : '') + (isRequired ? ' required' : '');
+
+    const tag = isRequired ? `<span class="req-tag">${L.required_tag}</span>` : '<div class="toggle"></div>';
+
+    el.innerHTML = `
+      <div class="left">
+        <span class="name">${escapeHtml(getSectionName(s))}</span>
+        <span class="desc">${escapeHtml(getSectionDesc(s))}</span>
+      </div>
+      ${tag}
+    `;
+    if (!isRequired) {
+      el.addEventListener('click', () => {
+        if (s.isRules) {
+          toast(L.toast_hard_rules_auto, 'err');
+          return;
+        }
+        cur.sectionsOn[s.id] = !cur.sectionsOn[s.id];
+        renderStructure();
+        renderContentFields();
+        renderOutput();
+        saveState();
+      });
+    }
+    wrap.appendChild(el);
+  });
+}
+
+// ============================================================
+// RENDER : content fields
+// ============================================================
+function renderContentFields() {
+  const L = t();
+  const def = md();
+  const cur = ms();
+  const wrap = $('#content-fields');
+  wrap.innerHTML = '';
+  const active = def.sections.filter(s => cur.sectionsOn[s.id] && !s.isRules);
+  if (active.length === 0) {
+    wrap.innerHTML = `<p style="color: var(--fg-mute); font-size: 11px; text-align:center; padding: 20px;">— ${state.lang === 'es' ? 'ninguna sección activa' : 'no active sections'} —</p>`;
+    return;
+  }
+  active.forEach(s => {
+    const fld = document.createElement('label');
+    fld.className = 'field';
+    const ph = getPlaceholder(s.id);
+    fld.innerHTML = `
+      <span class="lbl"><span>${escapeHtml(getSectionName(s))}</span><span class="hint">${escapeHtml(getSectionDesc(s))}</span></span>
+      <textarea data-section="${s.id}" class="${s.short ? 'short' : ''}" placeholder="${escapeHtml(ph)}"></textarea>
+    `;
+    const ta = fld.querySelector('textarea');
+    ta.value = cur.values[s.id] || '';
+    ta.addEventListener('input', () => {
+      cur.values[s.id] = ta.value;
+      renderOutput();
+      saveState();
+    });
+    wrap.appendChild(fld);
+  });
+}
+
+// ============================================================
+// RENDER : rules
+// ============================================================
+function renderRules() {
+  const L = t();
+  const cur = ms();
+  const wrap = $('#no-chips');
+  wrap.innerHTML = '';
+
+  L.base_rules.forEach((rule, idx) => {
+    const chip = document.createElement('div');
+    chip.className = 'chip' + (cur.ruleActiveIdx.has(idx) ? ' active' : '');
+    chip.textContent = 'NO ' + rule;
+    chip.addEventListener('click', () => {
+      if (cur.ruleActiveIdx.has(idx)) cur.ruleActiveIdx.delete(idx);
+      else cur.ruleActiveIdx.add(idx);
+      renderRules();
+      renderOutput();
+      saveState();
+    });
+    wrap.appendChild(chip);
+  });
+
+  cur.customRules.forEach((rule, idx) => {
+    const chip = document.createElement('div');
+    chip.className = 'chip active custom';
+    chip.innerHTML = `NO ${escapeHtml(rule)} <span class="x" title="remove">✕</span>`;
+    chip.querySelector('.x').addEventListener('click', (e) => {
+      e.stopPropagation();
+      cur.customRules.splice(idx, 1);
+      renderRules();
+      renderOutput();
+      saveState();
+    });
+    wrap.appendChild(chip);
+  });
+
+  const total = cur.ruleActiveIdx.size + cur.customRules.length;
+  $('#rules-count-tag').textContent = L.rules_count(total);
+  $('#header-rules').textContent = total;
+}
+
+// ============================================================
+// BUILD OUTPUT (per mode)
+// ============================================================
+function buildOutput() {
+  if (state.mode === 'skillmd') return buildSkillMd();
+  if (state.mode === 'claudemd') return buildClaudeMd();
+  return buildPrompt();
+}
+
+function buildPrompt() {
+  const L = t();
+  const def = md();
+  const cur = ms();
+  const lines = [];
+
+  for (const s of def.sections) {
+    if (!cur.sectionsOn[s.id]) continue;
+    const name = getSectionName(s);
+
+    if (s.isRules) {
+      const active = [
+        ...[...cur.ruleActiveIdx].map(i => L.base_rules[i]).filter(Boolean),
+        ...cur.customRules,
+      ];
+      if (active.length === 0) continue;
+      lines.push(`# ${name}`);
+      active.forEach(r => lines.push(`- NO ${r}`));
+      if (cur.rigor >= 0.85) lines.push('- ' + L.rigor_high);
+      if (cur.rigor >= 0.95) lines.push('- ' + L.rigor_extreme);
+      lines.push('');
+      continue;
+    }
+
+    const v = cur.values[s.id];
+    if (!v || !v.trim()) continue;
+    lines.push(`# ${name}`);
+    lines.push(v.trim());
+    lines.push('');
+  }
+
+  // STYLE
+  const stylistic = [];
+  if (cur.verbosity !== 1) stylistic.push(`${L.verbosity_label}: ${L.fader_verbosity_scale[cur.verbosity]}.`);
+  if (cur.tone !== 2) stylistic.push(`${L.tone_label}: ${L.fader_tone_scale[cur.tone]}.`);
+  if (stylistic.length) {
+    lines.push(`# ${L.style_section}`);
+    lines.push(stylistic.join(' '));
+    lines.push('');
+  }
+
+  return lines.join('\n').trim();
+}
+
+function buildClaudeMd() {
+  // CLAUDE.md uses H2 (##) headers — convention for project files
+  const L = t();
+  const def = md();
+  const cur = ms();
+  const lines = [];
+
+  for (const s of def.sections) {
+    if (!cur.sectionsOn[s.id]) continue;
+    const name = getSectionName(s);
+
+    if (s.isRules) {
+      const active = [
+        ...[...cur.ruleActiveIdx].map(i => L.base_rules[i]).filter(Boolean),
+        ...cur.customRules,
+      ];
+      if (active.length === 0) continue;
+      lines.push(`## ${name}`);
+      active.forEach(r => lines.push(`- NO ${r}`));
+      if (cur.rigor >= 0.85) lines.push('- ' + L.rigor_high);
+      if (cur.rigor >= 0.95) lines.push('- ' + L.rigor_extreme);
+      lines.push('');
+      continue;
+    }
+
+    const v = cur.values[s.id];
+    if (!v || !v.trim()) continue;
+    lines.push(`## ${name}`);
+    lines.push(v.trim());
+    lines.push('');
+  }
+
+  // STYLE block (if any)
+  const stylistic = [];
+  if (cur.verbosity !== 1) stylistic.push(`${L.verbosity_label}: ${L.fader_verbosity_scale[cur.verbosity]}.`);
+  if (cur.tone !== 2) stylistic.push(`${L.tone_label}: ${L.fader_tone_scale[cur.tone]}.`);
+  if (stylistic.length) {
+    lines.push(`## ${L.style_section}`);
+    lines.push(stylistic.join(' '));
+    lines.push('');
+  }
+
+  return lines.join('\n').trim();
+}
+
+function buildSkillMd() {
+  const L = t();
+  const def = md();
+  const cur = ms();
+  const lines = [];
+
+  // YAML frontmatter
+  const yamlFields = def.sections.filter(s => s.isYaml && cur.sectionsOn[s.id]);
+  if (yamlFields.length > 0) {
+    lines.push('---');
+    for (const s of yamlFields) {
+      const fieldName = s.id.replace(/^_yaml_/, '');
+      const v = (cur.values[s.id] || '').trim();
+      if (s.id === '_yaml_description' && v.includes('\n')) {
+        // multi-line description: use block scalar
+        lines.push(`${fieldName}: |`);
+        v.split('\n').forEach(ln => lines.push('  ' + ln));
+      } else {
+        // single-line: quote if contains special chars
+        const needsQuote = /[:#'"`{}\[\],&*?|<>=!%@\\]/.test(v) || v.startsWith(' ') || v.endsWith(' ');
+        lines.push(`${fieldName}: ${needsQuote ? JSON.stringify(v) : v}`);
+      }
+    }
+    lines.push('---');
+    lines.push('');
+  }
+
+  // Body sections (H2)
+  for (const s of def.sections) {
+    if (s.isYaml) continue;
+    if (!cur.sectionsOn[s.id]) continue;
+    const name = getSectionName(s);
+
+    if (s.isRules) {
+      const active = [
+        ...[...cur.ruleActiveIdx].map(i => L.base_rules[i]).filter(Boolean),
+        ...cur.customRules,
+      ];
+      if (active.length === 0) continue;
+      lines.push(`## ${name}`);
+      active.forEach(r => lines.push(`- NO ${r}`));
+      if (cur.rigor >= 0.85) lines.push('- ' + L.rigor_high);
+      if (cur.rigor >= 0.95) lines.push('- ' + L.rigor_extreme);
+      lines.push('');
+      continue;
+    }
+
+    const v = cur.values[s.id];
+    if (!v || !v.trim()) continue;
+    lines.push(`## ${name}`);
+    lines.push(v.trim());
+    lines.push('');
+  }
+
+  // Style hint (rarely used in skills but kept for parity)
+  const stylistic = [];
+  if (cur.verbosity !== 1) stylistic.push(`${L.verbosity_label}: ${L.fader_verbosity_scale[cur.verbosity]}.`);
+  if (cur.tone !== 2) stylistic.push(`${L.tone_label}: ${L.fader_tone_scale[cur.tone]}.`);
+  if (stylistic.length) {
+    lines.push(`## ${L.style_section}`);
+    lines.push(stylistic.join(' '));
+    lines.push('');
+  }
+
+  return lines.join('\n').trim();
+}
+
+// ============================================================
+// VALIDATION (skill mode)
+// ============================================================
+function validateSkill() {
+  const L = t();
+  const cur = ms();
+  const name = (cur.values['_yaml_name'] || '').trim();
+  const desc = (cur.values['_yaml_description'] || '').trim();
+  const errors = [];
+  const warnings = [];
+
+  if (!name) errors.push(L.v_name_required);
+  else {
+    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(name)) errors.push(L.v_name_kebab);
+    if (name.length > 64) errors.push(L.v_name_too_long);
+  }
+
+  if (!desc) errors.push(L.v_desc_required);
+  else {
+    if (desc.length < 80) warnings.push(L.v_desc_too_short);
+    if (!/use when|trigger|skip when|usar cuando|triggers en/i.test(desc)) warnings.push(L.v_desc_no_trigger);
+  }
+
+  // line count
+  const out = buildSkillMd();
+  if (out.split('\n').length > 500) warnings.push(L.v_too_long);
+
+  return { errors, warnings };
+}
+
+function renderValidation() {
+  const v = $('#validation');
+  if (state.mode !== 'skillmd') {
+    v.className = 'validation';
+    v.innerHTML = '';
+    return;
+  }
+  const L = t();
+  const { errors, warnings } = validateSkill();
+  if (errors.length === 0 && warnings.length === 0) {
+    v.className = 'validation show ok';
+    v.innerHTML = `<div class="v-head">✓ ${L.validation_ok}</div>`;
+    return;
+  }
+  let html = '';
+  if (errors.length) {
+    html += `<div class="v-head">✗ ${L.validation_err} (${errors.length})</div><ul>` +
+            errors.map(e => `<li>${escapeHtml(e)}</li>`).join('') + '</ul>';
+    v.className = 'validation show err';
+  } else {
+    v.className = 'validation show warn';
+  }
+  if (warnings.length) {
+    html += `<div class="v-head" style="margin-top:6px;">⚠ ${L.validation_warn} (${warnings.length})</div><ul>` +
+            warnings.map(w => `<li>${escapeHtml(w)}</li>`).join('') + '</ul>';
+  }
+  v.innerHTML = html;
+}
+
+// ============================================================
+// RENDER OUTPUT
+// ============================================================
+function renderOutput() {
+  const text = buildOutput();
+  const pre = $('#output');
+
+  // syntax highlight
+  let html = escapeHtml(text);
+  if (state.mode === 'skillmd') {
+    // YAML frontmatter
+    html = html.replace(/^(---)$/gm, '<span class="yaml-sep">$1</span>');
+    html = html.replace(/^([a-z_]+):/gm, '<span class="yaml-key">$1</span>:');
+  }
+  html = html.replace(/^(#{1,3} [^\n]+)$/gm, '<span class="sect-head">$1</span>');
+  html = html.replace(/^(- NO .+)$/gm, '<span class="rule-no">$1</span>');
+  pre.innerHTML = html;
+
+  const chars = text.length;
+  const tokens = Math.ceil(chars / 4);
+  const cur = ms();
+  const def = md();
+  const totalRules = cur.ruleActiveIdx.size + cur.customRules.length;
+  const activeSections = def.sections.filter(s => {
+    if (!cur.sectionsOn[s.id]) return false;
+    if (s.isRules) return totalRules > 0;
+    return !!(cur.values[s.id] && cur.values[s.id].trim());
+  }).length;
+
+  $('#stat-chars').textContent = chars;
+  $('#stat-tokens').textContent = '~' + tokens;
+  $('#stat-sections').textContent = activeSections;
+  $('#stat-rules').textContent = totalRules;
+  $('#header-tokens').textContent = '~' + tokens;
+
+  // live indicator: only "live" if there is output
+  const liveDot = $('#live-dot');
+  if (liveDot) liveDot.style.opacity = chars > 0 ? '1' : '0.25';
+  // dim export buttons when output empty
+  const copyBtn = $('#copy-btn');
+  const dlBtn = $('#download-btn');
+  if (copyBtn) copyBtn.disabled = chars === 0;
+  if (dlBtn) dlBtn.disabled = chars === 0;
+
+  // extra stat per mode
+  const extra = $('#stat-extra');
+  if (state.mode === 'skillmd') {
+    const lines = text.split('\n').length;
+    extra.innerHTML = `lines: <b>${lines}</b>`;
+  } else {
+    extra.textContent = '';
+  }
+
+  renderValidation();
+}
+
+// ============================================================
+// FADERS
+// ============================================================
+function setupSliders() {
+  $('#creativity').addEventListener('input', e => {
+    ms().creativity = parseFloat(e.target.value);
+    $('#creativity-val').textContent = ms().creativity.toFixed(2);
+    saveState();
+  });
+  $('#rigor').addEventListener('input', e => {
+    ms().rigor = parseFloat(e.target.value);
+    $('#rigor-val').textContent = ms().rigor.toFixed(2);
+    renderOutput();
+    saveState();
+  });
+  $('#verbosity').addEventListener('input', e => {
+    ms().verbosity = parseInt(e.target.value);
+    refreshFaderLabels();
+    renderOutput();
+    saveState();
+  });
+  $('#tone').addEventListener('input', e => {
+    ms().tone = parseInt(e.target.value);
+    refreshFaderLabels();
+    renderOutput();
+    saveState();
+  });
+}
+
+// ============================================================
+// PRESETS
+// ============================================================
+function applyPreset(p) {
+  const cur = ms();
+  const def = md();
+  cur.values = {};
+  for (const [k, v] of Object.entries(p.values || p.sections || {})) cur.values[k] = v;
+  if (Array.isArray(p.ruleIdx)) cur.ruleActiveIdx = new Set(p.ruleIdx);
+  cur.customRules = [...(p.customRules || [])];
+  if (typeof p.creativity === 'number') cur.creativity = p.creativity;
+  if (typeof p.rigor === 'number') cur.rigor = p.rigor;
+  if (typeof p.verbosity === 'number') cur.verbosity = p.verbosity;
+  if (typeof p.tone === 'number') cur.tone = p.tone;
+  if (p.structureOn) {
+    def.sections.forEach(s => {
+      cur.sectionsOn[s.id] = s.required || p.structureOn.includes(s.id);
+    });
+  }
+  syncFadersFromState();
+  renderStructure();
+  renderContentFields();
+  renderRules();
+  renderOutput();
+  saveState();
+}
+
+function setupPresets() {
+  const sel = $('#preset-select');
+  sel.addEventListener('change', () => {
+    const v = sel.value;
+    if (!v) return;
+    const baseP = PRESETS[state.mode][state.lang][v];
+    const customP = state.customPresets[state.mode][v];
+    const p = baseP || customP;
+    if (p) {
+      applyPreset(p);
+      toast(t().toast_preset_loaded(p.label), 'ok');
+    }
+    sel.value = '';
+  });
+
+  $('#save-preset-btn').addEventListener('click', () => {
+    const name = prompt(t().toast_prompt_name);
+    if (!name) return;
+    const id = 'custom-' + Date.now();
+    const cur = ms();
+    const def = md();
+    state.customPresets[state.mode][id] = {
+      label: name,
+      values: { ...cur.values },
+      ruleIdx: [...cur.ruleActiveIdx],
+      customRules: [...cur.customRules],
+      creativity: cur.creativity,
+      rigor: cur.rigor,
+      verbosity: cur.verbosity,
+      tone: cur.tone,
+      structureOn: def.sections.filter(s => cur.sectionsOn[s.id]).map(s => s.id),
+    };
+    refreshCustomPresetsList();
+    saveState();
+    toast(t().toast_preset_saved(name), 'ok');
+  });
+
+  $('#delete-preset-btn').addEventListener('click', () => {
+    const keys = Object.keys(state.customPresets[state.mode]);
+    if (keys.length === 0) { toast(t().toast_no_custom_presets, 'err'); return; }
+    const id = prompt(t().toast_delete_id + keys.map(k => `${k} → ${state.customPresets[state.mode][k].label}`).join('\n'));
+    if (!id || !state.customPresets[state.mode][id]) return;
+    delete state.customPresets[state.mode][id];
+    refreshCustomPresetsList();
+    saveState();
+    toast(t().toast_preset_deleted, 'ok');
+  });
+
+  $('#reset-btn').addEventListener('click', () => {
+    if (!confirm(t().toast_confirm_reset)) return;
+    state.modes[state.mode] = emptyModeState(state.mode);
+    syncFadersFromState();
+    renderStructure();
+    renderContentFields();
+    renderRules();
+    renderOutput();
+    saveState();
+    toast(t().toast_reset_ok, 'ok');
+  });
+}
+
+// ============================================================
+// CUSTOM RULES
+// ============================================================
+function setupCustomRules() {
+  const inp = $('#custom-rule-input');
+  const btn = $('#add-rule-btn');
+  const add = () => {
+    let v = inp.value.trim();
+    if (!v) return;
+    v = v.replace(/^no\s+/i, '');
+    const L = t();
+    const cur = ms();
+    if (cur.customRules.includes(v) || L.base_rules.includes(v)) {
+      toast(L.toast_dup_rule, 'err');
+      return;
+    }
+    cur.customRules.push(v);
+    inp.value = '';
+    renderRules();
+    renderOutput();
+    saveState();
+  };
+  btn.addEventListener('click', add);
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
+}
+
+// ============================================================
+// COPY / DOWNLOAD
+// ============================================================
+function setupExport() {
+  // visual confirmation flash on a big-action button
+  function flashButton(btn, success = true) {
+    if (!btn) return;
+    btn.classList.add(success ? 'flash-ok' : 'flash-err');
+    setTimeout(() => btn.classList.remove('flash-ok', 'flash-err'), 800);
+  }
+
+  $('#copy-btn').addEventListener('click', async (e) => {
+    const text = buildOutput();
+    if (!text) { toast(t().toast_empty, 'err'); return; }
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(t().toast_copied, 'ok');
+      flashButton(e.currentTarget, true);
+    } catch {
+      toast(t().toast_cant_copy, 'err');
+      flashButton(e.currentTarget, false);
+    }
+  });
+
+  $('#download-btn').addEventListener('click', (e) => {
+    const text = buildOutput();
+    if (!text) { toast(t().toast_empty, 'err'); return; }
+    const blob = new Blob([text], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    let filename;
+    if (state.mode === 'claudemd') filename = 'CLAUDE.md';
+    else if (state.mode === 'skillmd') {
+      const name = (ms().values['_yaml_name'] || 'skill').trim() || 'skill';
+      filename = `${name}/SKILL.md`.replace(/[^a-zA-Z0-9_./-]/g, '_');
+      filename = `SKILL-${name}.md`;
+    } else {
+      filename = `prompt-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.txt`;
+    }
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    flashButton(e.currentTarget, true);
+  });
+}
+
+// ============================================================
+// AI BACKEND
+// ============================================================
+function refreshAPIStatus() {
+  const L = t();
+  if (!state.ai.panelOn) {
+    $('#status-led').classList.remove('active');
+    $('#api-status').textContent = L.offline_mode;
+    return;
+  }
+  const k = state.ai.keys[state.ai.provider] || '';
+  if (k) {
+    $('#status-led').classList.add('active');
+    $('#api-status').textContent = L.api_ready(state.ai.provider);
+  } else {
+    $('#status-led').classList.remove('active');
+    $('#api-status').textContent = L.api_no_key;
+  }
+}
+
+function applyAIPanelVisibility() {
+  const aiCol = $('#ai-column');
+  const grid = $('#main-grid');
+  const banner = $('#offline-banner');
+  const toggle = $('#ai-mode-toggle');
+  if (state.ai.panelOn) {
+    aiCol.classList.remove('hidden');
+    grid.classList.remove('ai-off');
+    banner.classList.add('hidden');
+    toggle.classList.add('on');
+  } else {
+    aiCol.classList.add('hidden');
+    grid.classList.add('ai-off');
+    banner.classList.remove('hidden');
+    toggle.classList.remove('on');
+  }
+  refreshAPIStatus();
+}
+
+function setupAI() {
+  const provSel = $('#ai-provider');
+  const modSel = $('#ai-model');
+  const keyInp = $('#ai-key');
+
+  const refreshModels = () => {
+    modSel.innerHTML = '';
+    MODELS[state.ai.provider].forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = m.label;
+      modSel.appendChild(opt);
+    });
+    const valid = MODELS[state.ai.provider].some(m => m.id === state.ai.model);
+    modSel.value = valid ? state.ai.model : MODELS[state.ai.provider][0].id;
+    state.ai.model = modSel.value;
+  };
+
+  const refreshKeyUI = () => {
+    const k = state.ai.keys[state.ai.provider] || '';
+    keyInp.value = k;
+    $('#key-status').textContent = k ? t().key_set(k) : t().key_none;
+    refreshAPIStatus();
+  };
+
+  provSel.value = state.ai.provider;
+  refreshModels();
+  refreshKeyUI();
+
+  provSel.addEventListener('change', () => {
+    state.ai.provider = provSel.value;
+    refreshModels();
+    refreshKeyUI();
+    saveState();
+  });
+  modSel.addEventListener('change', () => {
+    state.ai.model = modSel.value;
+    saveState();
+  });
+
+  $('#save-key-btn').addEventListener('click', () => {
+    state.ai.keys[state.ai.provider] = keyInp.value.trim();
+    refreshKeyUI();
+    saveState();
+    toast(keyInp.value.trim() ? t().toast_key_saved : t().toast_key_empty, keyInp.value.trim() ? 'ok' : 'err');
+  });
+  $('#clear-key-btn').addEventListener('click', () => {
+    state.ai.keys[state.ai.provider] = '';
+    keyInp.value = '';
+    refreshKeyUI();
+    saveState();
+    toast(t().toast_key_cleared, 'ok');
+  });
+
+  $('#ai-mode-toggle').addEventListener('click', () => {
+    state.ai.panelOn = !state.ai.panelOn;
+    applyAIPanelVisibility();
+    saveState();
+  });
+
+  $('#ai-improve-btn').addEventListener('click', () => runAI('improve'));
+  $('#ai-test-btn').addEventListener('click', () => runAI('test'));
+  $('#ai-critique-btn').addEventListener('click', () => runAI('critique'));
+
+  $('#ai-apply-btn').addEventListener('click', () => {
+    const out = $('#ai-output').textContent;
+    if (!out) return;
+    const parsed = parseImprovedOutput(out);
+    if (Object.keys(parsed).length === 0) {
+      toast(t().toast_no_sections, 'err');
+      navigator.clipboard.writeText(out).catch(()=>{});
+      return;
+    }
+    const cur = ms();
+    for (const [k, v] of Object.entries(parsed)) cur.values[k] = v;
+    renderContentFields();
+    renderOutput();
+    saveState();
+    toast(t().toast_applied(Object.keys(parsed).length), 'ok');
+  });
+
+  $('#ai-copy-btn').addEventListener('click', async () => {
+    const txt = $('#ai-output').textContent;
+    if (!txt) return;
+    await navigator.clipboard.writeText(txt);
+    toast(t().toast_copied, 'ok');
+  });
+}
+
+function parseImprovedOutput(text) {
+  // Build header → id map across both langs & current mode
+  const headerMap = {};
+  const def = md();
+  ['en','es'].forEach(lang => {
+    def.sections.forEach(s => {
+      if (s.isYaml || s.isRules) return;
+      const n = (lang === 'es' ? s.nameES : s.nameEN).toUpperCase();
+      headerMap[n] = s.id;
+    });
+  });
+
+  // For skill mode, also try to parse YAML frontmatter
+  const result = {};
+  if (state.mode === 'skillmd') {
+    const fmMatch = text.match(/^---\n([\s\S]*?)\n---/);
+    if (fmMatch) {
+      const yaml = fmMatch[1];
+      // simple key: value parsing
+      const lines = yaml.split('\n');
+      let curKey = null, curVal = [];
+      for (const ln of lines) {
+        const m = ln.match(/^([a-z_]+):\s*(.*)$/);
+        if (m) {
+          if (curKey) result['_yaml_' + curKey] = curVal.join('\n').trim();
+          curKey = m[1];
+          let v = m[2];
+          if (v === '|' || v === '|-' || v === '>' || v === '>-') v = '';
+          else if (v.startsWith('"') && v.endsWith('"')) try { v = JSON.parse(v); } catch{}
+          curVal = v ? [v] : [];
+        } else if (curKey && (ln.startsWith('  ') || ln.startsWith('\t'))) {
+          curVal.push(ln.replace(/^ {2}|^\t/, ''));
+        }
+      }
+      if (curKey) result['_yaml_' + curKey] = curVal.join('\n').trim();
+    }
+  }
+
+  // Parse body
+  const headerRe = /^#{1,3}\s+([^\n]+?)\s*$/gm;
+  const matches = [...text.matchAll(headerRe)];
+  for (let i = 0; i < matches.length; i++) {
+    const header = matches[i][1].trim().toUpperCase();
+    const id = headerMap[header];
+    if (!id) continue;
+    const start = matches[i].index + matches[i][0].length;
+    const end = i + 1 < matches.length ? matches[i+1].index : text.length;
+    const body = text.slice(start, end).trim();
+    if (body) result[id] = body;
+  }
+  return result;
+}
+
+// ============================================================
+// AI CALLS
+// ============================================================
+async function runAI(mode) {
+  const L = t();
+  const key = state.ai.keys[state.ai.provider];
+  if (!state.ai.panelOn || !key) { toast(L.toast_no_apikey, 'err'); return; }
+  const userOutput = buildOutput();
+  if (!userOutput) { toast(L.toast_empty, 'err'); return; }
+
+  const wrap = $('#ai-output-wrap');
+  const out = $('#ai-output');
+  const lbl = $('#ai-output-label');
+  const meta = $('#ai-output-meta');
+  wrap.classList.remove('hidden');
+  lbl.textContent = mode;
+  meta.innerHTML = '<span class="ai-spinner"></span> ' + state.ai.provider + '/' + state.ai.model + '…';
+  out.textContent = '';
+
+  const cur = ms();
+  const hardRules = [
+    ...[...cur.ruleActiveIdx].map(i => L.base_rules[i]).filter(Boolean),
+    ...cur.customRules,
+  ].map(r => `- NO ${r}`).join('\n');
+
+  let systemMsg, messages;
+  if (mode === 'improve') {
+    systemMsg = L.ai_improve_system(hardRules, state.mode);
+    messages = [{ role: 'user', content: L.ai_improve_user(userOutput) }];
+  } else if (mode === 'critique') {
+    systemMsg = L.ai_critique_system(state.mode);
+    messages = [{ role: 'user', content: L.ai_critique_user(userOutput) }];
+  } else {
+    systemMsg = userOutput;
+    messages = [{ role: 'user', content: L.ai_test_user }];
+  }
+
+  const t0 = Date.now();
+  try {
+    let resultText;
+    if (state.ai.provider === 'anthropic') {
+      resultText = await callAnthropic(key, state.ai.model, systemMsg, messages, cur.creativity);
+    } else {
+      resultText = await callOpenAI(key, state.ai.model, systemMsg, messages, cur.creativity);
+    }
+    const dt = ((Date.now() - t0) / 1000).toFixed(1);
+    meta.textContent = `${dt}s · ${state.ai.model} · temp ${cur.creativity.toFixed(2)}`;
+    out.textContent = resultText;
+  } catch(e) {
+    meta.textContent = 'error';
+    out.textContent = '⚠ ' + (e.message || e);
+    toast(L.toast_ai_error, 'err');
+  }
+}
+
+async function callAnthropic(key, model, system, messages, temperature) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({ model, max_tokens: 4096, temperature, system, messages }),
+  });
+  if (!res.ok) throw new Error(`${res.status} ${(await res.text()).slice(0,300)}`);
+  const data = await res.json();
+  return (data.content || []).map(b => b.type === 'text' ? b.text : '').join('').trim();
+}
+
+async function callOpenAI(key, model, system, messages, temperature) {
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+    body: JSON.stringify({
+      model, temperature, max_tokens: 4096,
+      messages: [{ role: 'system', content: system }, ...messages],
+    }),
+  });
+  if (!res.ok) throw new Error(`${res.status} ${(await res.text()).slice(0,300)}`);
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content?.trim() || '';
+}
+
+// ============================================================
+// LANG SWITCH
+// ============================================================
+function setupLangSwitch() {
+  $$('.lang-switch button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.lang = btn.dataset.lang;
+      applyI18n();
+      saveState();
+    });
+  });
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function init() {
+  loadState();
+  // set initial mode tab
+  $$('.mode-tab').forEach(b => b.classList.toggle('active', b.dataset.mode === state.mode));
+  setupSliders();
+  setupPresets();
+  setupCustomRules();
+  setupExport();
+  setupAI();
+  setupLangSwitch();
+  setupModeSwitcher();
+  applyI18n();
+  applyAIPanelVisibility();
+  syncFadersFromState();
+}
+
+init();
+
+})();
+</script>
+</body>
+</html>
