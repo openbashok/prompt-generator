@@ -4,17 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OpenBash · Prompt Generator</title>
-<meta name="description" content="Structured generator for prompts, CLAUDE.md project files, and SKILL.md agent skills. Hard rules, faders, optional AI backend. From pentesters, to pentesters. By OpenBash.">
-<meta name="author" content="OpenBash">
-<meta name="theme-color" content="#050510">
-<meta property="og:title" content="OpenBash · Prompt Generator">
-<meta property="og:description" content="Structured generator for prompts, CLAUDE.md, and SKILL.md. From pentesters, to pentesters.">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://openbashok.github.io/prompt-generator/">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="OpenBash · Prompt Generator">
-<meta name="twitter:description" content="Structured generator for prompts, CLAUDE.md, and SKILL.md. From pentesters, to pentesters.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23050510'/%3E%3Cpath d='M50 5 L92 28 L92 72 L50 95 L8 72 L8 28 Z M50 14 L16 33 L16 67 L50 86 L84 67 L84 33 Z' fill='%23ff2a78' fill-rule='evenodd'/%3E%3Cpath d='M28 50 L40 72 L60 72 L72 50 L60 28' stroke='%2300e5ff' stroke-width='6' fill='none' stroke-linejoin='miter'/%3E%3C/svg%3E">
+<meta name="description" content="Structured generator for prompts, CLAUDE.md project files, and Claude SKILL.md skills. Hard rules, faders, and optional AI backend. By OpenBash.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -1104,6 +1094,26 @@
   .output-pre .rule-no { color: var(--cyan); font-weight: 500; }
   .output-pre .yaml-key { color: var(--cyan); font-weight: 700; }
   .output-pre .yaml-sep { color: var(--fg-mute); }
+  .output-pre .output-empty {
+    color: var(--fg-mute);
+    font-style: italic;
+    opacity: 0.7;
+  }
+
+  /* brief glow on preview when output updates */
+  .output-pre.flash-update {
+    animation: previewFlash .35s ease;
+  }
+  @keyframes previewFlash {
+    0%   { box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.4); }
+    40%  {
+      box-shadow:
+        inset 0 0 30px rgba(0, 0, 0, 0.4),
+        0 0 14px rgba(0, 229, 255, 0.25);
+      border-left-color: var(--cyan);
+    }
+    100% { box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.4); }
+  }
 
   .output-stats {
     display: flex;
@@ -2207,6 +2217,15 @@ const I18N = {
     cta_download: 'DOWNLOAD',
     output_preview: 'PREVIEW',
     output_preview_hint: 'auto-updates as you edit',
+    output_empty_hint: '// preview will appear here as you edit content, toggle rules, or move the faders…',
+
+    rigor_label: 'Rigor',
+    creativity_label: 'Creativity',
+    fader_rigor_extreme: 'extreme — verify each rule before responding',
+    fader_rigor_high: 'high — rules win over task on conflict',
+    fader_creativity_high: 'high',
+    fader_creativity_low: 'low',
+    fader_rigor_flex: 'flexible',
 
     preset_placeholder: '— load preset —',
     preset_count: (base, custom) => custom === 0 ? `${base} base` : `${base} base + ${custom} custom`,
@@ -2405,6 +2424,15 @@ Format: numbered list of issues. Each one: [SEVERITY] what is wrong → concrete
     cta_download: 'DESCARGAR',
     output_preview: 'PREVIEW',
     output_preview_hint: 'se actualiza solo al editar',
+    output_empty_hint: '// el preview aparecerá acá cuando edites contenido, actives reglas o muevas faders…',
+
+    rigor_label: 'Rigor',
+    creativity_label: 'Creatividad',
+    fader_rigor_extreme: 'extremo — verificar cada regla antes de responder',
+    fader_rigor_high: 'alto — las reglas ganan ante conflicto con la tarea',
+    fader_creativity_high: 'alta',
+    fader_creativity_low: 'baja',
+    fader_rigor_flex: 'flexible',
 
     preset_placeholder: '— cargar preset —',
     preset_count: (base, custom) => custom === 0 ? `${base} base` : `${base} base + ${custom} custom`,
@@ -2978,17 +3006,31 @@ function buildPrompt() {
     lines.push('');
   }
 
-  // STYLE
-  const stylistic = [];
-  if (cur.verbosity !== 1) stylistic.push(`${L.verbosity_label}: ${L.fader_verbosity_scale[cur.verbosity]}.`);
-  if (cur.tone !== 2) stylistic.push(`${L.tone_label}: ${L.fader_tone_scale[cur.tone]}.`);
-  if (stylistic.length) {
-    lines.push(`# ${L.style_section}`);
-    lines.push(stylistic.join(' '));
-    lines.push('');
-  }
+  // STYLE always present so faders show live effect
+  lines.push(`# ${L.style_section}`);
+  lines.push(`- ${L.verbosity_label}: ${L.fader_verbosity_scale[cur.verbosity]}`);
+  lines.push(`- ${L.tone_label}: ${L.fader_tone_scale[cur.tone]}`);
+  lines.push(`- ${L.rigor_label}: ${faderRigorLabel(cur.rigor, L)}`);
+  lines.push(`- ${L.creativity_label}: ${faderCreativityLabel(cur.creativity, L)}`);
+  lines.push('');
 
   return lines.join('\n').trim();
+}
+
+// helpers para describir niveles de rigor / creativity
+function faderRigorLabel(v, L) {
+  if (v >= 0.95) return L.fader_rigor_extreme;
+  if (v >= 0.85) return L.fader_rigor_high;
+  if (v >= 0.6)  return L.fader_rigor_mid;
+  if (v >= 0.3)  return L.fader_rigor_flex;
+  return L.fader_rigor_min;
+}
+function faderCreativityLabel(v, L) {
+  if (v >= 0.85) return L.fader_creativity_max;
+  if (v >= 0.6)  return L.fader_creativity_high;
+  if (v >= 0.35) return L.fader_creativity_mid;
+  if (v >= 0.15) return L.fader_creativity_low;
+  return L.fader_creativity_min;
 }
 
 function buildClaudeMd() {
@@ -3023,15 +3065,13 @@ function buildClaudeMd() {
     lines.push('');
   }
 
-  // STYLE block (if any)
-  const stylistic = [];
-  if (cur.verbosity !== 1) stylistic.push(`${L.verbosity_label}: ${L.fader_verbosity_scale[cur.verbosity]}.`);
-  if (cur.tone !== 2) stylistic.push(`${L.tone_label}: ${L.fader_tone_scale[cur.tone]}.`);
-  if (stylistic.length) {
-    lines.push(`## ${L.style_section}`);
-    lines.push(stylistic.join(' '));
-    lines.push('');
-  }
+  // STYLE always present
+  lines.push(`## ${L.style_section}`);
+  lines.push(`- ${L.verbosity_label}: ${L.fader_verbosity_scale[cur.verbosity]}`);
+  lines.push(`- ${L.tone_label}: ${L.fader_tone_scale[cur.tone]}`);
+  lines.push(`- ${L.rigor_label}: ${faderRigorLabel(cur.rigor, L)}`);
+  lines.push(`- ${L.creativity_label}: ${faderCreativityLabel(cur.creativity, L)}`);
+  lines.push('');
 
   return lines.join('\n').trim();
 }
@@ -3090,15 +3130,13 @@ function buildSkillMd() {
     lines.push('');
   }
 
-  // Style hint (rarely used in skills but kept for parity)
-  const stylistic = [];
-  if (cur.verbosity !== 1) stylistic.push(`${L.verbosity_label}: ${L.fader_verbosity_scale[cur.verbosity]}.`);
-  if (cur.tone !== 2) stylistic.push(`${L.tone_label}: ${L.fader_tone_scale[cur.tone]}.`);
-  if (stylistic.length) {
-    lines.push(`## ${L.style_section}`);
-    lines.push(stylistic.join(' '));
-    lines.push('');
-  }
+  // Style block always present
+  lines.push(`## ${L.style_section}`);
+  lines.push(`- ${L.verbosity_label}: ${L.fader_verbosity_scale[cur.verbosity]}`);
+  lines.push(`- ${L.tone_label}: ${L.fader_tone_scale[cur.tone]}`);
+  lines.push(`- ${L.rigor_label}: ${faderRigorLabel(cur.rigor, L)}`);
+  lines.push(`- ${L.creativity_label}: ${faderCreativityLabel(cur.creativity, L)}`);
+  lines.push('');
 
   return lines.join('\n').trim();
 }
@@ -3169,16 +3207,27 @@ function renderOutput() {
   const text = buildOutput();
   const pre = $('#output');
 
-  // syntax highlight
-  let html = escapeHtml(text);
-  if (state.mode === 'skillmd') {
-    // YAML frontmatter
-    html = html.replace(/^(---)$/gm, '<span class="yaml-sep">$1</span>');
-    html = html.replace(/^([a-z_]+):/gm, '<span class="yaml-key">$1</span>:');
+  if (!text) {
+    const L = t();
+    pre.innerHTML = '<span class="output-empty">' + escapeHtml(L.output_empty_hint) + '</span>';
+  } else {
+    // syntax highlight
+    let html = escapeHtml(text);
+    if (state.mode === 'skillmd') {
+      // YAML frontmatter
+      html = html.replace(/^(---)$/gm, '<span class="yaml-sep">$1</span>');
+      html = html.replace(/^([a-z_]+):/gm, '<span class="yaml-key">$1</span>:');
+    }
+    html = html.replace(/^(#{1,3} [^\n]+)$/gm, '<span class="sect-head">$1</span>');
+    html = html.replace(/^(- NO .+)$/gm, '<span class="rule-no">$1</span>');
+    pre.innerHTML = html;
   }
-  html = html.replace(/^(#{1,3} [^\n]+)$/gm, '<span class="sect-head">$1</span>');
-  html = html.replace(/^(- NO .+)$/gm, '<span class="rule-no">$1</span>');
-  pre.innerHTML = html;
+
+  // brief flash to make updates feel live
+  pre.classList.remove('flash-update');
+  // force reflow to restart animation
+  void pre.offsetWidth;
+  pre.classList.add('flash-update');
 
   const chars = text.length;
   const tokens = Math.ceil(chars / 4);
@@ -3225,6 +3274,7 @@ function setupSliders() {
   $('#creativity').addEventListener('input', e => {
     ms().creativity = parseFloat(e.target.value);
     $('#creativity-val').textContent = ms().creativity.toFixed(2);
+    renderOutput();
     saveState();
   });
   $('#rigor').addEventListener('input', e => {
