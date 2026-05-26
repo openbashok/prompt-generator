@@ -189,7 +189,7 @@
     line-height: 1;
     text-shadow: 0 0 20px rgba(255, 42, 120, 0.3);
   }
-  .brand-name .dot { color: var(--pink); text-shadow: 0 0 12px var(--pink-glow); }
+  .brand-name .dot, .brand-product .dot { color: var(--pink); text-shadow: 0 0 12px var(--pink-glow); }
   .brand-product {
     font-family: var(--display);
     font-size: .58rem;
@@ -1342,8 +1342,8 @@
           </svg>
         </div>
         <div>
-          <div class="brand-name">openbash<span class="dot">.</span></div>
-          <div class="brand-product">PROMPT GENERATOR</div>
+          <div class="brand-name">PROMPT GENERATOR</div>
+          <div class="brand-product">openbash<span class="dot">.</span></div>
         </div>
       </div>
       <div class="header-right">
@@ -2229,6 +2229,8 @@ const I18N = {
 
     preset_placeholder: '— load preset —',
     preset_count: (base, custom) => custom === 0 ? `${base} base` : `${base} base + ${custom} custom`,
+    optgroup_base: 'Base',
+    optgroup_custom: 'My presets',
 
     btn_save: 'save',
     btn_reset: 'reset',
@@ -2436,6 +2438,8 @@ Format: numbered list of issues. Each one: [SEVERITY] what is wrong → concrete
 
     preset_placeholder: '— cargar preset —',
     preset_count: (base, custom) => custom === 0 ? `${base} base` : `${base} base + ${custom} custom`,
+    optgroup_base: 'Base',
+    optgroup_custom: 'Mis presets',
 
     btn_save: 'guardar',
     btn_reset: 'reset',
@@ -2827,6 +2831,7 @@ function refreshCustomPresetsList() {
   const L = t();
   const base = PRESETS[state.mode][state.lang];
   const baseG = $('#base-presets-group');
+  baseG.label = L.optgroup_base;
   baseG.innerHTML = '';
   for (const [id, p] of Object.entries(base)) {
     const o = document.createElement('option');
@@ -2836,6 +2841,7 @@ function refreshCustomPresetsList() {
   }
 
   const customG = $('#custom-presets-group');
+  customG.label = L.optgroup_custom;
   customG.innerHTML = '';
   const custom = state.customPresets[state.mode] || {};
   const entries = Object.entries(custom);
